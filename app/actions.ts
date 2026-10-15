@@ -1,54 +1,83 @@
 'use server';
-// The cart actions. Each creates the ABConvert client without `pageKey`: the
-// cart needs the visitor, which the middleware passed on with the request.
-// The store's own attributes are kept, and ABConvert's are added next to them.
+// The cart actions. Each builds the ABConvert client from the request (no
+// page key): the cart needs the visitor, which the middleware passed on.
 // https://docs.abconvert.io/headless-sdk/nextjs#step-5-write-the-cart-attributes
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createABConvert } from '@abconvert/headless/next';
-import { abconvertOptions, COUNTRY_COOKIE, countryOf } from '@/lib/abconvert';
-import { buyerIp, CART_COOKIE, requestCountry } from '@/lib/request';
-import { STORE_ATTRIBUTES, addLines, createCart, getCart, updateAttributes, updateCountry, type Attribute } from '@/lib/shopify';
+import { COUNTRY_COOKIE, countryOf } from '@/lib/abconvert';
+import { addToCurrentCart, cartAttributes, cartContext, currentCart } from '@/lib/cart';
+import { buyerIp, CART_COOKIE } from '@/lib/request';
+import { createCart, updateCountry, updateQuantity } from '@/lib/shopify';
+import { drawerFor, type Drawer } from '@/lib/drawer';
 
-const STORE_LINE_ATTRIBUTES: Attribute[] = [{ key: '_added_from', value: 'product_page' }];
-
-async function context() {
-  const country = await requestCountry();
-  const abconvert = await createABConvert({ ...abconvertOptions, country });
-  return { country, ip: await buyerIp(), abconvert };
-}
-
-export async function addToCart(variantId: string): Promise<void> {
-  const { country, ip, abconvert } = await context();
-  const line = { variantId, quantity: 1, attributes: [...STORE_LINE_ATTRIBUTES, ...abconvert.getCartLineAttributes()] };
-  const attributes = [...STORE_ATTRIBUTES, ...abconvert.getCartAttributes()];
-  const call = { country, buyerIp: ip };
-
-  const jar = await cookies();
-  const existing = jar.get(CART_COOKIE)?.value;
-  let cart = existing ? await getCart(existing, call) : null;
-  if (!cart) {
-    cart = await createCart({ lines: [line], attributes, country, buyerIp: ip });
-  } else {
-    cart = await addLines(cart.id, [line], call);
-    // Again on every change: a cart made before a test launched has no attributes for it.
-    cart = await updateAttributes(cart.id, attributes, call);
+/** The product page's Add to Cart. The page then opens the cart drawer. */
+export async function addToCart(variantId: string): Promise<Drawer> {
+  try {
+    const context = await cartContext();
+    const cart = await addToCurrentCart(context, variantId, 'product_page');
+    return await drawerFor(cart, context);
+  } catch (error) {
+    return failed(error);
   }
-  // The cart ID carries a secret key: an httpOnly cookie keeps it out of the page.
-  jar.set(CART_COOKIE, cart.id, { path: '/', sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-  redirect('/cart');
 }
 
-/** Buy Now skips the cart page: a new cart with both sets of attributes, straight to checkout. */
+/** Buy Now skips the cart: a new cart with both sets of attributes, straight to checkout. */
 export async function buyNow(variantId: string): Promise<void> {
-  const { country, ip, abconvert } = await context();
+  const context = await cartContext();
   const cart = await createCart({
-    lines: [{ variantId, quantity: 1, attributes: [...STORE_LINE_ATTRIBUTES, ...abconvert.getCartLineAttributes()] }],
-    attributes: [...STORE_ATTRIBUTES, ...abconvert.getCartAttributes()],
-    country,
-    buyerIp: ip,
+    lines: [{ variantId, quantity: 1, attributes: [{ key: '_added_from', value: 'buy_now' }, ...context.abconvert.getCartLineAttributes()] }],
+    attributes: cartAttributes(context.abconvert),
+    country: context.country,
+    buyerIp: context.call.buyerIp,
   });
   redirect(cart.checkoutUrl);
+}
+
+/** What the cart drawer shows when it opens: the cart, priced on the server. */
+export async function openDrawer(): Promise<Drawer> {
+  try {
+    const context = await cartContext();
+    return await drawerFor(await currentCart(context), context);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
+/** A recommendation's Add button in the drawer. */
+export async function addFromDrawer(variantId: string): Promise<Drawer> {
+  try {
+    const context = await cartContext();
+    return await drawerFor(await addToCurrentCart(context, variantId, 'cart_drawer'), context);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
+/** The drawer's quantity buttons; 0 removes the line. */
+export async function changeQuantity(lineId: string, quantity: number): Promise<Drawer> {
+  try {
+    const context = await cartContext();
+    const cart = await currentCart(context);
+    if (!cart) return await drawerFor(null, context);
+    await updateQuantity(cart.id, lineId, quantity, context.call);
+    return await drawerFor(await currentCart(context), context);
+  } catch (error) {
+    return failed(error);
+  }
+}
+
+/**
+ * The drawer's Checkout button. The attributes are checked again at the click,
+ * so checkout never charges a price older than the one the drawer showed.
+ * On an error the shopper stays in the drawer: checkout would charge the old price.
+ */
+export async function startCheckout(): Promise<{ url: string } | { error: string }> {
+  try {
+    const cart = await currentCart(await cartContext());
+    return cart?.lines.length ? { url: cart.checkoutUrl } : { error: 'Your cart is empty.' };
+  } catch (error) {
+    return { error: message(error) };
+  }
 }
 
 /** The header's country selector. The cart's country moves with it, so checkout charges that market. */
@@ -59,4 +88,11 @@ export async function setCountry(form: FormData): Promise<void> {
   const cartId = jar.get(CART_COOKIE)?.value;
   if (cartId) await updateCountry(cartId, { country, buyerIp: await buyerIp() });
   redirect(String(form.get('back') || '/'));
+}
+
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+function failed(error: unknown): Drawer {
+  console.error('[cart]', message(error));
+  return { lines: [], count: 0, subtotal: '', recommendations: [], offers: [], error: 'The cart could not be updated. Try again.' };
 }

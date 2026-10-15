@@ -35,7 +35,7 @@ export interface Product {
 }
 export interface Collection { handle: string; title: string }
 export interface Attribute { key: string; value: string }
-export interface CartLine { id: string; quantity: number; attributes: Attribute[]; title: string; productId: string; variantId: string; handle: string; price: Money }
+export interface CartLine { id: string; quantity: number; attributes: Attribute[]; title: string; productId: string; variantId: string; handle: string; image: { url: string; altText: string | null } | null; price: Money }
 export interface Cart { id: string; checkoutUrl: string; attributes: Attribute[]; lines: CartLine[] }
 
 interface Call {
@@ -129,6 +129,16 @@ export async function getProduct(handle: string, country: string): Promise<Produ
   return data.product ? toProduct(data.product) : null;
 }
 
+/** Shopify's related products for a product, for the cart drawer. Not shopper-specific, so cached like a page. */
+export async function getRecommendations(productId: string, country: string): Promise<Product[]> {
+  const data = await storefront<{ productRecommendations: RawProduct[] | null }>(
+    `query ($productId: ID!) @inContext { productRecommendations(productId: $productId, intent: RELATED) { ${PRODUCT_FIELDS} } }`,
+    { productId },
+    { country, cache: 'page' },
+  );
+  return products(data.productRecommendations ?? []);
+}
+
 export async function searchProducts(text: string, country: string): Promise<Product[]> {
   if (!text.trim()) return [];
   const data = await storefront<{ products: { nodes: RawProduct[] } }>(`query ($query: String!) @inContext { products(first: 24, query: $query) { nodes { ${PRODUCT_FIELDS} } } }`, { query: text }, { country, cache: 'none' });
@@ -147,14 +157,14 @@ const CART_FIELDS = `
     nodes {
       id quantity
       attributes { key value }
-      merchandise { ... on ProductVariant { id price { amount currencyCode } product { id handle title } } }
+      merchandise { ... on ProductVariant { id price { amount currencyCode } image { url altText } product { id handle title } } }
     }
   }
 `;
 
 type RawCart = {
   id: string; checkoutUrl: string; attributes: Attribute[];
-  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; merchandise: { id: string; price: RawMoney; product: { id: string; handle: string; title: string } } }[] };
+  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; merchandise: { id: string; price: RawMoney; image: { url: string; altText: string | null } | null; product: { id: string; handle: string; title: string } } }[] };
 };
 type Payload = { cart: RawCart | null; userErrors: { message: string }[] };
 
@@ -174,6 +184,7 @@ function toCart(payload: Payload | { cart: RawCart | null }): Cart | null {
       productId: line.merchandise.product.id,
       variantId: line.merchandise.id,
       handle: line.merchandise.product.handle,
+      image: line.merchandise.image,
       price: money(line.merchandise.price),
     })),
   };
@@ -208,6 +219,24 @@ export async function updateAttributes(cartId: string, attributes: Attribute[], 
     { ...call, cache: 'none' },
   );
   return toCart(data.cartAttributesUpdate)!;
+}
+
+/** A new quantity for a line; 0 removes it. */
+export async function updateQuantity(cartId: string, lineId: string, quantity: number, call: { country: string; buyerIp?: string }): Promise<Cart> {
+  if (quantity <= 0) {
+    const data = await storefront<{ cartLinesRemove: Payload }>(
+      `mutation ($cartId: ID!, $lineIds: [ID!]!) @inContext { cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { ${CART_FIELDS} } userErrors { message } } }`,
+      { cartId, lineIds: [lineId] },
+      { ...call, cache: 'none' },
+    );
+    return toCart(data.cartLinesRemove)!;
+  }
+  const data = await storefront<{ cartLinesUpdate: Payload }>(
+    `mutation ($cartId: ID!, $lines: [CartLineUpdateInput!]!) @inContext { cartLinesUpdate(cartId: $cartId, lines: $lines) { cart { ${CART_FIELDS} } userErrors { message } } }`,
+    { cartId, lines: [{ id: lineId, quantity }] },
+    { ...call, cache: 'none' },
+  );
+  return toCart(data.cartLinesUpdate)!;
 }
 
 export async function updateCountry(cartId: string, call: { country: string; buyerIp?: string }): Promise<Cart> {

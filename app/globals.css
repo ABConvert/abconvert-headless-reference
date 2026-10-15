@@ -46,3 +46,24 @@ footer.site { border-top: 1px solid var(--line); padding: 24px; text-align: cent
 .debug ul { padding-left: 16px; margin: 0; }
 .debug-form { display: grid; gap: 6px; }
 .debug-form input, .debug-form select, .debug button { padding: 6px 8px; }
+button.link { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; }
+button.icon { background: none; border: 0; font-size: 24px; line-height: 1; cursor: pointer; }
+.error { color: #b42318; }
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 40; display: flex; justify-content: flex-end; }
+.drawer { width: min(440px, 100vw); height: 100%; background: #fff; display: flex; flex-direction: column; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.drawer-head h2 { margin: 0; font-size: 18px; }
+.drawer-body { flex: 1; overflow: auto; padding: 16px 20px; }
+.drawer[aria-busy='true'] .drawer-body { opacity: 0.6; }
+.drawer-body h3 { font-size: 15px; margin: 20px 0 8px; }
+.drawer-lines, .drawer-recs { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.drawer-lines li, .drawer-recs li { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; }
+.drawer-lines img, .drawer-recs img, .drawer .placeholder { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #f4f4f4; }
+.drawer-lines a, .drawer-recs a { font-size: 14px; text-decoration: none; display: block; }
+.drawer-recs li { background: #f5f8fc; border-radius: 8px; padding: 8px; }
+.drawer-recs .price { display: block; margin-top: 4px; }
+.drawer-recs button { padding: 6px 12px; border-radius: 16px; border: 0; background: var(--blue); color: #fff; cursor: pointer; }
+.qty { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 14px; }
+.qty button:not(.link) { width: 28px; height: 28px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+.drawer-foot { border-top: 1px solid var(--line); padding: 16px 20px; display: grid; gap: 10px; }
+.drawer-foot p { display: flex; justify-content: space-between; margin: 0; }

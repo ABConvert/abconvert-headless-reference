@@ -1,14 +1,10 @@
-// The cart renders per visitor, so it can read what a cached page cannot: the
-// visitor's shipping rates, free shipping threshold and offers. Checkout
-// charges what the cart attributes say, so the page writes them again when
-// they no longer match the visitor's tests (for example after a launch).
+// The cart page renders per visitor, so it can read what a cached page cannot:
+// the visitor's offers and free shipping threshold. It checks the cart
+// attributes before showing the Checkout button (lib/cart.ts), as the drawer
+// does at its Checkout click.
 // https://docs.abconvert.io/headless-sdk/cart
 import Link from 'next/link';
-import { cookies } from 'next/headers';
-import { createABConvert } from '@abconvert/headless/next';
-import { abconvertOptions } from '@/lib/abconvert';
-import { buyerIp, CART_COOKIE, requestCountry } from '@/lib/request';
-import { STORE_ATTRIBUTES, getCart, sameAttributes, updateAttributes } from '@/lib/shopify';
+import { cartContext, currentCart } from '@/lib/cart';
 import { Price } from '@/components/Price';
 import { Exposure } from '@/components/Exposure';
 
@@ -16,22 +12,15 @@ export const dynamic = 'force-dynamic';
 export const metadata = { alternates: { canonical: '/cart' }, robots: { index: false } };
 
 export default async function CartPage() {
-  const country = await requestCountry();
-  const call = { country, buyerIp: await buyerIp() };
-  const abconvert = await createABConvert({ ...abconvertOptions, country });
-  const cartId = (await cookies()).get(CART_COOKIE)?.value;
-  let cart = cartId ? await getCart(cartId, call) : null;
-  const attributes = [...STORE_ATTRIBUTES, ...abconvert.getCartAttributes()];
-  if (cart?.lines.length && !sameAttributes(cart.attributes, attributes)) cart = await updateAttributes(cart.id, attributes, call);
+  const context = await cartContext();
+  const { abconvert } = context;
+  const cart = await currentCart(context);
 
-  const offers = abconvert.getOffers();
-  const threshold = abconvert.getFreeShippingThreshold();
-  const lines = (cart?.lines ?? []).map((line) => {
-    const tested = abconvert.getPriceByVariantId(line.variantId);
-    return { line, amount: tested?.amount ?? line.price.amount };
-  });
+  const lines = (cart?.lines ?? []).map((line) => ({ line, amount: abconvert.getPriceByVariantId(line.variantId)?.amount ?? line.price.amount }));
   const subtotal = lines.reduce((sum, { line, amount }) => sum + amount * line.quantity, 0);
   const currency = cart?.lines[0]?.price.currency ?? 'USD';
+  const offers = lines.length ? abconvert.getOffers() : [];
+  const threshold = lines.length ? abconvert.getFreeShippingThreshold() : null;
 
   return (
     <div className="cart">
@@ -42,12 +31,12 @@ export default async function CartPage() {
           <Exposure experimentId={offer.experimentId} />
         </div>
       ))}
-      {threshold && lines.length ? (
+      {threshold ? (
         <div className="banner">
           {subtotal >= threshold.amount ? 'You have free shipping.' : `Add ${abconvert.formatPrice(threshold.amount - subtotal, threshold.currency)} more for free shipping.`}
         </div>
       ) : null}
-      {!lines.length ? (
+      {!cart || !lines.length ? (
         <p>Your cart is empty. <Link href="/">Continue shopping</Link></p>
       ) : (
         <>
@@ -64,10 +53,10 @@ export default async function CartPage() {
             </tbody>
           </table>
           <p>Subtotal: <strong>{abconvert.formatPrice(subtotal, currency)}</strong></p>
-          <a className="button primary" href={cart!.checkoutUrl}>Checkout</a>
+          <a className="button primary" href={cart.checkoutUrl}>Checkout</a>
           <details className="muted">
             <summary>Cart attributes</summary>
-            <pre>{JSON.stringify({ cart: cart!.attributes, lines: cart!.lines.map((line) => line.attributes) }, null, 2)}</pre>
+            <pre>{JSON.stringify({ cart: cart.attributes, lines: cart.lines.map((line) => line.attributes) }, null, 2)}</pre>
           </details>
         </>
       )}

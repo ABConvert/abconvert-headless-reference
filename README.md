@@ -13,6 +13,7 @@ Use it to see a working integration, to copy from, and to check your own store a
 | Google Cloud CDN, cache key on the path | `scripts/cdn.mjs`, a local stand-in that behaves the same way |
 | Storefront API through the Headless channel | `lib/shopify.ts`, with the private token on the server |
 | Add to Cart, Buy Now, Buy with Shop Pay | Server actions and a cart permalink |
+| A cart drawer with recommendations | `components/CartDrawer.tsx`, priced on the server |
 | Prices by country | A country selector; `@inContext(country:)` and the cart's `buyerIdentity.countryCode` |
 
 ## Quick start
@@ -75,8 +76,8 @@ npm run cdn
 
 1. In ABConvert, create a price test on one of your products and leave it in **Preview**.
 2. Copy its preview link, replace the domain with `http://localhost:8080`, and add `&abconvert_force=<test ID>:1`. The product page shows Variant A's price. The panel shows the page key and the forced test group.
-3. Open a collection with that product and the cart. Both show the same price.
-4. Go to checkout three ways: **Checkout** from the cart, **Buy Now**, and **Buy with Shop Pay**. Each checkout line shows Variant A's price.
+3. Open a collection with that product, the cart drawer and the cart page. All show the same price.
+4. Go to checkout four ways: **Checkout** in the cart drawer, **Checkout** on the cart page, **Buy Now**, and **Buy with Shop Pay**. Each checkout line shows Variant A's price.
 5. Change the force to `:0`. Every page and checkout show Control's price.
 6. Launch the test. Wait a minute, open a private window without the preview link, and browse as a new visitor. The browser sends the assignment, the exposure, page views and add to cart to ABConvert; a completed order shows in the test's results.
 
@@ -109,7 +110,8 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 | `app/[locale]/*/layout.tsx` | `ABConvertProvider` with the page's state | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-3-add-the-page-key-routes) |
 | `components/ProductView.tsx` | Canonical URLs built from the route params | [Next.js, step 4](https://docs.abconvert.io/headless-sdk/nextjs#step-4-build-canonical-urls-from-the-route) |
 | `components/Price.tsx` | The test price, else the Storefront API price, and the exposure | [Prices](https://docs.abconvert.io/headless-sdk/prices) |
-| `app/actions.ts`, `app/[locale]/(store)/cart/page.tsx` | Cart and line attributes on every cart change and on the cart page | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
+| `lib/cart.ts`, `app/actions.ts` | Cart and line attributes on every cart change, checked again before checkout | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
+| `lib/drawer.ts`, `components/CartDrawer.tsx` | The cart drawer, priced on the server | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
 | `components/Tracking.tsx`, `ProductViewed.tsx`, `AddToCart.tsx` | Page views, product views and add to cart | [Tracking](https://docs.abconvert.io/headless-sdk/tracking) |
 | `components/ShopPayLink.tsx` | A cart permalink with the visitor's test groups | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
 | `components/DebugPanel.tsx` | The panel: visitor, page key, test groups, forcing | [Preview](https://docs.abconvert.io/headless-sdk/preview) |
@@ -126,6 +128,14 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
   ```
 
   See Google's [cache key settings](https://docs.cloud.google.com/cdn/docs/using-cache-keys) and [caching rules](https://docs.cloud.google.com/cdn/docs/caching).
+
+## Cart drawer
+
+The drawer opens from the header and after Add to Cart, on any page. Three rules keep it consistent with checkout, and they apply to any drawer, mini cart or slide-out cart you build:
+
+- **Price it on the server.** Most pages are cached, and the browser only holds the test prices for its own page key, or none on a page no test changes. A drawer priced in the browser shows the original price for every other product, while checkout charges the test price. Here the drawer's contents come from a server action (`lib/drawer.ts`) that builds the ABConvert client from the request and prices the lines, the recommendations and the subtotal.
+- **Check the cart attributes when the shopper checks out.** The drawer's Checkout button calls `startCheckout`, which writes the attributes again if they no longer match the visitor's tests, then sends the shopper to checkout. Without it, a cart made before a test launched shows the test price in the drawer and checks out at the original price.
+- **Treat every add as an add to cart.** The drawer's recommendation buttons write the line attributes on the server and call `track('product_added_to_cart')`, as the product page does.
 
 ## Checkout
 
@@ -161,10 +171,12 @@ next.config.mjs                     Cache-Control rule for product and collectio
 lib/abconvert.ts                    SDK options, country
 lib/shopify.ts                      Storefront API: catalog and cart
 lib/request.ts                      the shopper's country and IP
+lib/cart.ts                         the visitor's cart and its attribute check
+lib/drawer.ts                       the cart drawer's contents, priced on the server
 app/actions.ts                      Add to Cart, Buy Now, country
 app/[locale]/(store)/               pages no test changes for this visitor
 app/[locale]/abconvert/[pageKey]/   the same pages, rendered from a page key
-components/                         price, tracking, cart buttons, debug panel
+components/                         price, tracking, cart buttons, cart drawer, debug panel
 scripts/cdn.mjs                     Google Cloud CDN stand-in
 scripts/check.mjs                   routing and caching checks
 ```
