@@ -56,6 +56,7 @@ A headless store holds a copy of something in four places. Each has its own rule
 ## Tracking
 
 - The SDK sends events only for a visitor in at least one running test, and never for a forced or preview visit. "No events" during a check usually means no test is live, or the window still carries a forced test group.
+- Known crawlers, such as Googlebot, get the original store: no test group, no cookies and no events. A tested page stays `private` for them, so your CDN never stores their copy.
 - The SDK sends with `sendBeacon`. Chrome DevTools lists those under "Other", so the "Fetch/XHR" filter hides them.
 - Call `track('page_viewed')` on every navigation and `track('product_viewed')` on product pages. Page views feed engagement metrics; product views feed product results and product group results.
 

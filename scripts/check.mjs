@@ -21,14 +21,20 @@ const result = (ok, name, detail = '') => {
 };
 const skip = (name, why) => console.log(`SKIP  ${name}  (${why})`);
 
+const GOOGLEBOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+
+/** A page rendered for test groups loads its route under app/[locale]/abconvert/[pageKey]. */
+const PAGE_KEY_ROUTE = 'abconvert/%5BpageKey%5D';
+
 /** One page request as a browser makes it: a document load, with the given cookies. */
-async function load(path, cookie = '') {
+async function load(path, cookie = '', userAgent = 'Mozilla/5.0 (reference-store check)') {
   const response = await fetch(`${BASE}${path}`, {
     redirect: 'manual',
-    headers: { 'sec-fetch-dest': 'document', accept: 'text/html', 'user-agent': 'Mozilla/5.0 (reference-store check)', ...(cookie ? { cookie } : {}) },
+    headers: { 'sec-fetch-dest': 'document', accept: 'text/html', 'user-agent': userAgent, ...(cookie ? { cookie } : {}) },
   });
   const setCookies = response.headers.getSetCookie?.() ?? [];
-  return { status: response.status, location: response.headers.get('location'), cacheControl: response.headers.get('cache-control') ?? '', setCookies, cdn: response.headers.get('x-cdn-cache-status') };
+  const html = await response.text();
+  return { status: response.status, location: response.headers.get('location'), cacheControl: response.headers.get('cache-control') ?? '', setCookies, cdn: response.headers.get('x-cdn-cache-status'), html };
 }
 const jar = (setCookies, previous = '') => {
   const all = new Map(previous.split('; ').filter(Boolean).map((pair) => [pair.split('=')[0], pair]));
@@ -52,6 +58,12 @@ if (TESTED) {
   const names = sdkCookies(first.setCookies);
   result(names.includes('abconvert-visitor'), 'A new visitor on a tested page gets the SDK cookies', names.join(', ') || 'none: is a test running, or is the page in no test?');
   result(/private/.test(first.cacheControl), 'A first visit to a tested page is private (it sets cookies)', first.cacheControl || 'no cache-control');
+  // A known crawler gets the original store: no test group and no cookies. The page stays private,
+  // so a CDN never stores the crawler's original page and serves it to a shopper in the test.
+  const crawler = await load(TESTED, '', GOOGLEBOT);
+  result(crawler.status === 200 && !sdkCookies(crawler.setCookies).length, 'A known crawler on a tested page gets no SDK cookies', `${crawler.status} ${sdkCookies(crawler.setCookies).join(', ')}`);
+  result(!crawler.html.includes(PAGE_KEY_ROUTE), 'The crawler gets the original store, not a test group\'s page', crawler.html.includes(PAGE_KEY_ROUTE) ? 'rendered under a page key' : 'original route');
+  result(/private/.test(crawler.cacheControl), 'It stays private for the crawler, so no CDN keeps its original page', crawler.cacheControl || 'no cache-control');
   const cookie = jar(first.setCookies);
   const second = await load(TESTED, cookie);
   result(!sdkCookies(second.setCookies).length, 'A returning visitor gets no Set-Cookie', sdkCookies(second.setCookies).join(', '));
@@ -66,6 +78,9 @@ if (TESTED) {
       result(third.cdn === 'HIT', 'The CDN answers the same test groups from its cache', String(third.cdn));
       const stranger = await load(TESTED);
       result(stranger.cdn !== 'HIT', 'A visitor without the cookie never gets that copy', String(stranger.cdn));
+      // A preview or forced link lives in the query string: a key without it answers the link from the stored copy.
+      const forced = await load(`${TESTED}${TESTED.includes('?') ? '&' : '?'}abconvert_force=0:0`, cookie);
+      result(forced.cdn !== 'HIT', 'A link with an ABConvert query parameter is never answered from the stored copy', `${forced.cdn}: add abconvert_force, abconvert_preview_key and abconvert_experiment_id to the cache key`);
     }
   }
 } else {
@@ -73,9 +88,6 @@ if (TESTED) {
 }
 
 if (UNTESTED) {
-      // A preview or forced link lives in the query string: a key without it answers the link from the stored copy.
-      const forced = await load(`${TESTED}${TESTED.includes('?') ? '&' : '?'}abconvert_force=0:0`, cookie);
-      result(forced.cdn !== 'HIT', 'A link with an ABConvert query parameter is never answered from the stored copy', `${forced.cdn}: add abconvert_force, abconvert_preview_key and abconvert_experiment_id to the cache key`);
   const first = await load(UNTESTED);
   const second = await load(UNTESTED, jar(first.setCookies));
   result(!/private/.test(second.cacheControl) && /s-maxage/.test(second.cacheControl), 'A page no test changes stays cacheable', second.cacheControl || 'no cache-control');
