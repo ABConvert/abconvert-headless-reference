@@ -3,11 +3,15 @@
 //
 //   BASE=http://localhost:8080 TESTED=/products/<handle in a price test> UNTESTED=/products/<handle in none> npm run check
 //
+// Set ABCONVERT_CDN_KEYED_BY_COOKIE=1, as in the store, to check the cookie-keyed
+// mode: a returning visitor's tested page is then cacheable, not private.
+//
 // TESTED and UNTESTED are optional; the checks that need them are skipped
 // without them. The checks follow https://docs.abconvert.io/headless-sdk/nextjs.
 const BASE = (process.env.BASE || 'http://localhost:3000').replace(/\/$/, '');
 const TESTED = process.env.TESTED || '';
 const UNTESTED = process.env.UNTESTED || '';
+const KEYED = process.env.ABCONVERT_CDN_KEYED_BY_COOKIE === '1';
 const viaCdn = await fetch(`${BASE}/__cdn/stats`).then((r) => r.ok).catch(() => false);
 
 let failed = 0;
@@ -47,11 +51,23 @@ if (TESTED) {
   const first = await load(TESTED);
   const names = sdkCookies(first.setCookies);
   result(names.includes('abconvert-visitor'), 'A new visitor on a tested page gets the SDK cookies', names.join(', ') || 'none: is a test running, or is the page in no test?');
-  result(/private/.test(first.cacheControl), 'A tested page is private for a CDN that caches by path', first.cacheControl || 'no cache-control');
-  const second = await load(TESTED, jar(first.setCookies));
-  result(/private/.test(second.cacheControl), 'It stays private for a returning visitor', second.cacheControl);
+  result(/private/.test(first.cacheControl), 'A first visit to a tested page is private (it sets cookies)', first.cacheControl || 'no cache-control');
+  const cookie = jar(first.setCookies);
+  const second = await load(TESTED, cookie);
   result(!sdkCookies(second.setCookies).length, 'A returning visitor gets no Set-Cookie', sdkCookies(second.setCookies).join(', '));
-  if (viaCdn) result(first.cdn !== 'HIT' && second.cdn !== 'HIT', 'The CDN never answers a tested page from its cache', `${first.cdn}, ${second.cdn}`);
+  if (!KEYED) {
+    result(/private/.test(second.cacheControl), 'It stays private for a returning visitor, for a CDN that caches by path', second.cacheControl);
+    if (viaCdn) result(first.cdn !== 'HIT' && second.cdn !== 'HIT', 'The CDN never answers a tested page from its cache', `${first.cdn}, ${second.cdn}`);
+  } else {
+    result(sdkCookies(first.setCookies).includes('abconvert-key'), 'The first visit sets the abconvert-key cookie', sdkCookies(first.setCookies).join(', '));
+    result(!/private/.test(second.cacheControl) && /s-maxage/.test(second.cacheControl), 'A returning visitor\'s tested page is cacheable', second.cacheControl || 'no cache-control');
+    if (viaCdn) {
+      const third = await load(TESTED, cookie);
+      result(third.cdn === 'HIT', 'The CDN answers the same test groups from its cache', String(third.cdn));
+      const stranger = await load(TESTED);
+      result(stranger.cdn !== 'HIT', 'A visitor without the cookie never gets that copy', String(stranger.cdn));
+    }
+  }
 } else {
   skip('Tested page checks', 'set TESTED to a product page a running price test covers');
 }

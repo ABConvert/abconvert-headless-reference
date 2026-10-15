@@ -121,19 +121,45 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 - **Keep `private` on every response that has it.** The middleware's `Cache-Control` wins over a `headers()` rule in `next.config.mjs`, as in this store. A proxy or load balancer that rewrites `Cache-Control` in front of Next.js must leave `private` alone. If it sets `public` on every product page, the CDN serves one visitor's test price to everyone. Try it: `ORIGIN_REWRITE=force npm run cdn`.
 - **Cloud CDN does not cache a response whose `Vary` names headers outside its allowed list**, such as the `RSC` that Next.js adds. A storefront whose product pages answer `Vary: Accept-Encoding` already rewrites it. Keep doing so for pages without `private`.
 - **Client-side navigations bypass the CDN.** Next.js fetches them with an `RSC` header, and Next.js answers them from its own cache.
-- **Optional: cache tested pages at the CDN too.** Add the `abconvert-key` cookie to the cache key, then set `cdnKeyedByCookie: true` in `lib/abconvert.ts`. The cookie holds the visitor's test groups and no visitor or session ID. Set the option only after the CDN keys on the cookie.
+- **Optional: cache tested pages at the CDN too.** By default a tested page goes past the CDN, and Next.js serves it from its own cache. Two settings let the CDN store tested pages too, one copy per combination of test groups. The order matters:
+
+  1. Add the `abconvert-key` cookie to the CDN's cache key. On Google Cloud CDN:
+
+     ```bash
+     gcloud compute backend-services update YOUR_BACKEND_SERVICE --global --cache-key-include-named-cookie=abconvert-key
+     ```
+
+  2. Then set `ABCONVERT_CDN_KEYED_BY_COOKIE=1` and rebuild. It turns on the SDK's `cdnKeyedByCookie` in `lib/abconvert.ts`.
+
+  To turn it off, go in reverse: unset `ABCONVERT_CDN_KEYED_BY_COOKIE` first, then remove the cookie from the cache key. Never run the store with the setting on while the CDN keys on the path alone: the CDN would store one test group's page and serve it, with its prices, to every visitor.
+
+  The cookie holds the visitor's test groups and no visitor or session ID. A first visit sets cookies, so it is never cached; from the second request on, the CDN can answer. The cache key applies to every page behind the backend service, so route product, collection and search paths through their own backend service to keep other pages stored once.
+
+  Try it locally:
 
   ```bash
-  gcloud compute backend-services update YOUR_BACKEND_SERVICE --global --cache-key-include-named-cookie=abconvert-key
+  ABCONVERT_CDN_KEYED_BY_COOKIE=1 npm run build && ABCONVERT_CDN_KEYED_BY_COOKIE=1 npm run start
+  CDN_KEY_COOKIES=abconvert-key npm run cdn
+  ABCONVERT_CDN_KEYED_BY_COOKIE=1 BASE=http://localhost:8080 TESTED=/products/your-tested-product npm run check
   ```
 
   See Google's [cache key settings](https://docs.cloud.google.com/cdn/docs/using-cache-keys) and [caching rules](https://docs.cloud.google.com/cdn/docs/caching).
+
+## After you launch, edit or end a test
+
+For up to about two minutes, a page can still show the old price: up to 60 seconds for the SDK's copy of your tests on each server, plus up to 60 seconds at the CDN for a page it stored before the change. Next.js adds no delay, because a change gives tested pages a new page key. The cart and the drawer show Shopify's cart cost, which is what checkout charges, so the shopper sees the right price before paying.
+
+To shorten it: launch and end tests when traffic is low, and clear the CDN's cache for product, collection and search pages right after the change:
+
+```bash
+gcloud compute url-maps invalidate-cdn-cache YOUR_URL_MAP --path "/products/*"
+```
 
 ## Cart drawer
 
 The drawer opens from the header and after Add to Cart, on any page. Three rules keep it consistent with checkout, and they apply to any drawer, mini cart or slide-out cart you build:
 
-- **Price it on the server.** Most pages are cached, and the browser only holds the test prices for its own page key, or none on a page no test changes. A drawer priced in the browser shows the original price for every other product, while checkout charges the test price. Here the drawer's contents come from a server action (`lib/drawer.ts`) that builds the ABConvert client from the request and prices the lines, the recommendations and the subtotal.
+- **Price it on the server.** Most pages are cached, and the browser only holds the test prices for its own page key, or none on a page no test changes. A drawer priced in the browser shows the original price for every other product, while checkout charges the test price. Here the drawer's contents come from a server action (`lib/drawer.ts`). Lines and the subtotal use Shopify's cart cost: once the cart carries ABConvert's attributes, Shopify applies the test price to it, so it is exactly what checkout charges. Recommendations, which are not in the cart yet, are priced by the ABConvert client built from the request.
 - **Check the cart attributes when the shopper checks out.** The drawer's Checkout button calls `startCheckout`, which writes the attributes again if they no longer match the visitor's tests, then sends the shopper to checkout. Without it, a cart made before a test launched shows the test price in the drawer and checks out at the original price.
 - **Treat every add as an add to cart.** The drawer's recommendation buttons write the line attributes on the server and call `track('product_added_to_cart')`, as the product page does.
 

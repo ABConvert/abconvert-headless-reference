@@ -35,8 +35,13 @@ export interface Product {
 }
 export interface Collection { handle: string; title: string }
 export interface Attribute { key: string; value: string }
-export interface CartLine { id: string; quantity: number; attributes: Attribute[]; title: string; productId: string; variantId: string; handle: string; image: { url: string; altText: string | null } | null; price: Money }
-export interface Cart { id: string; checkoutUrl: string; attributes: Attribute[]; lines: CartLine[] }
+export interface CartLine {
+  id: string; quantity: number; attributes: Attribute[]; title: string; productId: string; variantId: string; handle: string;
+  image: { url: string; altText: string | null } | null;
+  /** What checkout charges per unit. Once the cart carries ABConvert's attributes, it includes the test price. */
+  cost: Money;
+}
+export interface Cart { id: string; checkoutUrl: string; attributes: Attribute[]; lines: CartLine[]; subtotal: Money }
 
 interface Call {
   country: string;
@@ -150,21 +155,26 @@ export async function searchProducts(text: string, country: string): Promise<Pro
 // The cart ID carries a secret key: keep it in an httpOnly cookie, never in a page.
 // ---------------------------------------------------------------------------
 
+// Line `cost` and the cart's `subtotalAmount` are what checkout charges: with
+// ABConvert's attributes on the cart, Shopify applies the test price to them.
+// The product variant's own `price` stays the original.
 const CART_FIELDS = `
   id checkoutUrl
   attributes { key value }
+  cost { subtotalAmount { amount currencyCode } }
   lines(first: 50) {
     nodes {
       id quantity
       attributes { key value }
-      merchandise { ... on ProductVariant { id price { amount currencyCode } image { url altText } product { id handle title } } }
+      cost { amountPerQuantity { amount currencyCode } }
+      merchandise { ... on ProductVariant { id image { url altText } product { id handle title } } }
     }
   }
 `;
 
 type RawCart = {
-  id: string; checkoutUrl: string; attributes: Attribute[];
-  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; merchandise: { id: string; price: RawMoney; image: { url: string; altText: string | null } | null; product: { id: string; handle: string; title: string } } }[] };
+  id: string; checkoutUrl: string; attributes: Attribute[]; cost: { subtotalAmount: RawMoney };
+  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; cost: { amountPerQuantity: RawMoney }; merchandise: { id: string; image: { url: string; altText: string | null } | null; product: { id: string; handle: string; title: string } } }[] };
 };
 type Payload = { cart: RawCart | null; userErrors: { message: string }[] };
 
@@ -176,6 +186,7 @@ function toCart(payload: Payload | { cart: RawCart | null }): Cart | null {
     id: raw.id,
     checkoutUrl: raw.checkoutUrl,
     attributes: raw.attributes,
+    subtotal: money(raw.cost.subtotalAmount),
     lines: raw.lines.nodes.map((line) => ({
       id: line.id,
       quantity: line.quantity,
@@ -185,7 +196,7 @@ function toCart(payload: Payload | { cart: RawCart | null }): Cart | null {
       variantId: line.merchandise.id,
       handle: line.merchandise.product.handle,
       image: line.merchandise.image,
-      price: money(line.merchandise.price),
+      cost: money(line.cost.amountPerQuantity),
     })),
   };
 }

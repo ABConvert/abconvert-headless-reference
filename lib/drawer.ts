@@ -2,9 +2,10 @@
 //
 // A drawer can open on any page, and most pages are cached: the browser only
 // holds the prices for its own page key, or none on a page no test changes.
-// So the drawer never prices in the browser. It asks the server, where the
-// client built from the request knows the visitor and prices every product:
-// the cart's lines, the recommendations and the subtotal.
+// So the drawer never prices in the browser. It asks the server: cart lines
+// and the subtotal come from Shopify's cart cost, which already includes the
+// test price, and recommendations from the client built from the request,
+// which knows the visitor and prices every product.
 import 'server-only';
 import type { CartContext } from './cart';
 import { getRecommendations, type Cart, type Money, type Product } from './shopify';
@@ -26,13 +27,12 @@ export interface Drawer {
   error?: string;
 }
 
-function priced(context: CartContext, variantId: string, price: Money, compareAt: Money | null): DrawerPrice & { value: number } {
+function priced(context: CartContext, variantId: string, price: Money, compareAt: Money | null): DrawerPrice {
   const tested = context.abconvert.getPriceByVariantId(variantId);
   const currency = tested?.currency ?? price.currency;
   const value = tested?.amount ?? price.amount;
   const compare = tested ? tested.compareAtAmount : compareAt?.amount ?? null;
   return {
-    value,
     amount: context.abconvert.formatPrice(value, currency),
     compareAt: compare !== null && compare > value ? context.abconvert.formatPrice(compare, currency) : null,
     experimentId: tested?.experimentId ?? null,
@@ -40,27 +40,33 @@ function priced(context: CartContext, variantId: string, price: Money, compareAt
 }
 
 export async function drawerFor(cart: Cart | null, context: CartContext): Promise<Drawer> {
-  const lines = (cart?.lines ?? []).map((line) => {
-    const { value, ...price } = priced(context, line.variantId, line.price, null);
-    return { line: { id: line.id, title: line.title, handle: line.handle, image: line.image?.url ?? null, quantity: line.quantity, ...price }, total: value * line.quantity, currency: line.price.currency };
-  });
+  const format = (money: Money) => context.abconvert.formatPrice(money.amount, money.currency);
+  // A line in the cart shows Shopify's own line cost: it already includes the
+  // test price, so it is exactly what checkout charges. The SDK only names the
+  // price test, for the exposure.
+  const lines = (cart?.lines ?? []).map((line) => ({
+    id: line.id,
+    title: line.title,
+    handle: line.handle,
+    image: line.image?.url ?? null,
+    quantity: line.quantity,
+    amount: format(line.cost),
+    compareAt: null,
+    experimentId: context.abconvert.getPriceByVariantId(line.variantId)?.experimentId ?? null,
+  }));
 
-  // Related to the first product in the cart, minus what is already in it.
+  // A recommendation is not in the cart yet, so the SDK prices it.
   const inCart = new Set((cart?.lines ?? []).map((line) => line.productId));
   const related: Product[] = cart?.lines[0] ? await getRecommendations(cart.lines[0].productId, context.country).catch(() => []) : [];
   const recommendations = related
     .filter((product) => !inCart.has(product.id))
     .slice(0, 4)
-    .map((product) => {
-      const { value: _value, ...price } = priced(context, product.variantId, product.price, product.compareAtPrice);
-      return { productId: product.id, variantId: product.variantId, title: product.title, handle: product.handle, image: product.image?.url ?? null, ...price };
-    });
+    .map((product) => ({ productId: product.id, variantId: product.variantId, title: product.title, handle: product.handle, image: product.image?.url ?? null, ...priced(context, product.variantId, product.price, product.compareAtPrice) }));
 
-  const subtotal = lines.reduce((sum, entry) => sum + entry.total, 0);
   return {
-    lines: lines.map((entry) => entry.line),
+    lines,
     count: (cart?.lines ?? []).reduce((sum, line) => sum + line.quantity, 0),
-    subtotal: lines.length ? context.abconvert.formatPrice(subtotal, lines[0].currency) : '',
+    subtotal: cart?.lines.length ? format(cart.subtotal) : '',
     recommendations,
     offers: lines.length ? context.abconvert.getOffers().map((offer) => ({ experimentId: offer.experimentId, title: offer.title })) : [],
   };
