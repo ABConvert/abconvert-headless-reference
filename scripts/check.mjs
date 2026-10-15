@@ -73,6 +73,9 @@ if (TESTED) {
 }
 
 if (UNTESTED) {
+      // A preview or forced link lives in the query string: a key without it answers the link from the stored copy.
+      const forced = await load(`${TESTED}${TESTED.includes('?') ? '&' : '?'}abconvert_force=0:0`, cookie);
+      result(forced.cdn !== 'HIT', 'A link with an ABConvert query parameter is never answered from the stored copy', `${forced.cdn}: add abconvert_force, abconvert_preview_key and abconvert_experiment_id to the cache key`);
   const first = await load(UNTESTED);
   const second = await load(UNTESTED, jar(first.setCookies));
   result(!/private/.test(second.cacheControl) && /s-maxage/.test(second.cacheControl), 'A page no test changes stays cacheable', second.cacheControl || 'no cache-control');

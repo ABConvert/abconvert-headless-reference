@@ -123,11 +123,16 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 - **Client-side navigations bypass the CDN.** Next.js fetches them with an `RSC` header, and Next.js answers them from its own cache.
 - **Optional: cache tested pages at the CDN too.** By default a tested page goes past the CDN, and Next.js serves it from its own cache. Two settings let the CDN store tested pages too, one copy per combination of test groups. The order matters:
 
-  1. Add the `abconvert-key` cookie to the CDN's cache key. On Google Cloud CDN:
+  1. Add the `abconvert-key` cookie and ABConvert's three query parameters to the CDN's cache key. On Google Cloud CDN:
 
      ```bash
-     gcloud compute backend-services update YOUR_BACKEND_SERVICE --global --cache-key-include-named-cookie=abconvert-key
+     gcloud compute backend-services update YOUR_BACKEND_SERVICE --global \
+       --cache-key-include-named-cookie=abconvert-key \
+       --cache-key-include-query-string \
+       --cache-key-query-string-whitelist=abconvert_force,abconvert_preview_key,abconvert_experiment_id
      ```
+
+     The query parameters matter as much as the cookie. A preview link and a forced test group live in the query string; a key without them answers such a link from the copy stored for the visitor's current test groups, so the link does nothing for up to 60 seconds.
 
   2. Then set `ABCONVERT_CDN_KEYED_BY_COOKIE=1` and rebuild. It turns on the SDK's `cdnKeyedByCookie` in `lib/abconvert.ts`.
 
@@ -139,7 +144,7 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 
   ```bash
   ABCONVERT_CDN_KEYED_BY_COOKIE=1 npm run build && ABCONVERT_CDN_KEYED_BY_COOKIE=1 npm run start
-  CDN_KEY_COOKIES=abconvert-key npm run cdn
+  CDN_KEY_COOKIES=abconvert-key CDN_KEY_QUERY=abconvert_force,abconvert_preview_key,abconvert_experiment_id npm run cdn
   ABCONVERT_CDN_KEYED_BY_COOKIE=1 BASE=http://localhost:8080 TESTED=/products/your-tested-product npm run check
   ```
 

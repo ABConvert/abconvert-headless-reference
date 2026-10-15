@@ -20,7 +20,9 @@
 // empties the cache.
 //
 // CDN_KEY_COOKIES=abconvert-key adds that cookie's value to the cache key, as
-// `--cache-key-include-named-cookie` does on Cloud CDN. Use it with
+// `--cache-key-include-named-cookie` does on Cloud CDN, and
+// CDN_KEY_QUERY=abconvert_force,abconvert_preview_key,abconvert_experiment_id
+// adds those query parameters, as a query string whitelist does. Use both with
 // ABCONVERT_CDN_KEYED_BY_COOKIE=1 in the store to try the cookie-keyed mode.
 //
 // ORIGIN_REWRITE=force shows what goes wrong when a layer in front of Next.js
@@ -32,6 +34,11 @@ const PORT = Number(process.env.CDN_PORT || 8080);
 const ORIGIN = { host: '127.0.0.1', port: Number(process.env.ORIGIN_PORT || 3000) };
 const REWRITE = process.env.ORIGIN_REWRITE || '';
 const KEY_COOKIES = (process.env.CDN_KEY_COOKIES || '').split(',').map((name) => name.trim()).filter(Boolean);
+// Query parameters that are part of the key, like Cloud CDN's query string
+// whitelist. ABConvert's preview and force links live in the query string, so
+// a key without them answers such a link from the copy stored for the
+// visitor's current test groups, and the link does nothing for up to s-maxage.
+const KEY_QUERY = (process.env.CDN_KEY_QUERY || '').split(',').map((name) => name.trim()).filter(Boolean);
 const cache = new Map();
 const stats = { hits: 0, misses: 0 };
 
@@ -39,10 +46,14 @@ const pathOf = (url) => new URL(url, 'http://cdn').pathname;
 
 /** The path, plus the named cookies' values when CDN_KEY_COOKIES is set. */
 function keyOf(req) {
-  const path = pathOf(req.url);
-  if (!KEY_COOKIES.length) return path;
-  const cookies = Object.fromEntries(String(req.headers.cookie ?? '').split(';').map((part) => part.trim().split('=')).filter(([name]) => name).map(([name, ...value]) => [name, value.join('=')]));
-  return `${path} ${KEY_COOKIES.map((name) => `${name}=${cookies[name] ?? ''}`).join(' ')}`;
+  const url = new URL(req.url, 'http://cdn');
+  const parts = [url.pathname];
+  for (const name of KEY_QUERY) if (url.searchParams.has(name)) parts.push(`?${name}=${url.searchParams.get(name)}`);
+  if (KEY_COOKIES.length) {
+    const cookies = Object.fromEntries(String(req.headers.cookie ?? '').split(';').map((part) => part.trim().split('=')).filter(([name]) => name).map(([name, ...value]) => [name, value.join('=')]));
+    for (const name of KEY_COOKIES) parts.push(`${name}=${cookies[name] ?? ''}`);
+  }
+  return parts.join(' ');
 }
 
 function rewrite(path, headers) {
@@ -93,4 +104,4 @@ http
     upstream.on('error', (error) => { res.writeHead(502); res.end(String(error)); });
     req.pipe(upstream);
   })
-  .listen(PORT, '127.0.0.1', () => console.log(`CDN on http://localhost:${PORT} -> origin :${ORIGIN.port}${REWRITE ? ` (ORIGIN_REWRITE=${REWRITE})` : ''}${KEY_COOKIES.length ? `, cache key: path + ${KEY_COOKIES.join(', ')}` : ''}`));
+  .listen(PORT, '127.0.0.1', () => console.log(`CDN on http://localhost:${PORT} -> origin :${ORIGIN.port}${REWRITE ? ` (ORIGIN_REWRITE=${REWRITE})` : ''}${KEY_COOKIES.length || KEY_QUERY.length ? `, cache key: path${KEY_QUERY.length ? ` + ?${KEY_QUERY.join(', ?')}` : ''}${KEY_COOKIES.length ? ` + ${KEY_COOKIES.join(', ')}` : ''}` : ''}`));

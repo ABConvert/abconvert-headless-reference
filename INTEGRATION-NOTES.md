@@ -23,6 +23,7 @@ A headless store holds a copy of something in four places. Each has its own rule
 
 - Google Cloud CDN can key on up to five named cookies on a backend service. Add `abconvert-key` to the key first, then turn on `cdnKeyedByCookie`. Turn it off in reverse.
 - With the SDK option on and a path-only CDN key, the CDN stores one test group's page and serves it to everyone. Nothing warns you.
+- In that mode, also add `abconvert_force`, `abconvert_preview_key` and `abconvert_experiment_id` to the cache key. A preview link and a forced test group live in the query string; a key without them answers the link from the stored copy for the visitor's current test groups, and the link does nothing for up to 60 seconds.
 - The cookie covers every price test, so it splits the cache for untested pages too. Route product, collection and search paths through their own backend service.
 - Cloud CDN never stores a response with `Set-Cookie`, `private` or `no-store`. It does not store a response whose `Vary` names a header outside its allowed list, and Next.js adds `Vary: RSC`. Rewrite `Vary` to `Accept-Encoding` in front of Next.js.
 
