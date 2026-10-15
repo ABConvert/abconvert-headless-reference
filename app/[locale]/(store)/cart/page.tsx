@@ -6,6 +6,7 @@
 // https://docs.abconvert.io/headless-sdk/cart
 import Link from 'next/link';
 import { cartContext, currentCart } from '@/lib/cart';
+import { CheckoutLink } from '@/components/CheckoutLink';
 import { Exposure } from '@/components/Exposure';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export default async function CartPage() {
             </tbody>
           </table>
           <p>Subtotal: <strong>{abconvert.formatPrice(cart.subtotal.amount, cart.subtotal.currency)}</strong></p>
-          <a className="button primary" href={cart.checkoutUrl}>Checkout</a>
+          <CheckoutLink href={cart.checkoutUrl} />
           <details className="muted">
             <summary>Cart attributes</summary>
             <pre>{JSON.stringify({ cart: cart.attributes, lines: cart.lines.map((line) => line.attributes) }, null, 2)}</pre>

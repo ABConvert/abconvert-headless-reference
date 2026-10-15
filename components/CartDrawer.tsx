@@ -14,6 +14,7 @@ import { useABConvert } from '@abconvert/headless/react';
 import { addFromDrawer, changeQuantity, openDrawer, startCheckout } from '@/app/actions';
 import type { Drawer } from '@/lib/drawer';
 import { Exposure } from './Exposure';
+import { Spinner, useLeaving } from './Spinner';
 
 interface DrawerControls {
   /** Opens the drawer, with contents an action already returned, or loads them. */
@@ -26,14 +27,23 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
   const [isOpen, setOpen] = useState(false);
   const [drawer, setDrawer] = useState<Drawer | null>(null);
   const [pending, start] = useTransition();
+  const [leaving, setLeaving] = useLeaving();
+  // The button the shopper clicked last: only it spins, while every button waits.
+  const [clicked, setClicked] = useState('');
   const [checkoutError, setCheckoutError] = useState('');
   const { track } = useABConvert();
+  const busy = pending || leaving;
+  const spinning = (button: string) => busy && clicked === button;
+  const run = (button: string, action: () => Promise<void>) => {
+    setClicked(button);
+    start(action);
+  };
 
   const open = useCallback((contents?: Drawer) => {
     setOpen(true);
     setCheckoutError('');
     if (contents) setDrawer(contents);
-    else start(async () => setDrawer(await openDrawer()));
+    else run('open', async () => setDrawer(await openDrawer()));
   }, []);
 
   useEffect(() => {
@@ -44,10 +54,12 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
   }, [isOpen]);
 
   const checkout = () =>
-    start(async () => {
+    run('checkout', async () => {
       const result = await startCheckout();
-      if ('url' in result) window.location.assign(result.url);
-      else setCheckoutError(result.error);
+      if ('url' in result) {
+        setLeaving(true);
+        window.location.assign(result.url);
+      } else setCheckoutError(result.error);
     });
 
   // Exposures for the test prices on screen, once the drawer shows them.
@@ -59,14 +71,14 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
       {children}
       {isOpen ? (
         <div className="drawer-backdrop" onClick={() => setOpen(false)}>
-          <aside className="drawer" role="dialog" aria-label="Shopping cart" aria-busy={pending} onClick={(event) => event.stopPropagation()}>
+          <aside className="drawer" role="dialog" aria-label="Shopping cart" aria-busy={busy} onClick={(event) => event.stopPropagation()}>
             <header className="drawer-head">
-              <h2>Shopping Cart</h2>
+              <h2>Shopping Cart{drawer && spinning('open') ? <Spinner /> : null}</h2>
               <button type="button" className="icon" aria-label="Close" onClick={() => setOpen(false)}>×</button>
             </header>
             {exposures.map((id) => <Exposure key={id} experimentId={id} />)}
             {!drawer ? (
-              <p className="muted drawer-body">Loading…</p>
+              <p className="muted drawer-body loading"><Spinner />Loading…</p>
             ) : (
               <div className="drawer-body">
                 {drawer.error ? <p className="error">{drawer.error}</p> : null}
@@ -81,10 +93,10 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
                         <div>
                           <Link href={`/products/${line.handle}`} onClick={() => setOpen(false)}>{line.title}</Link>
                           <div className="qty">
-                            <button type="button" aria-label="Decrease quantity" disabled={pending} onClick={() => start(async () => setDrawer(await changeQuantity(line.id, line.quantity - 1)))}>−</button>
+                            <button type="button" aria-label="Decrease quantity" disabled={busy} aria-busy={spinning(`less:${line.id}`)} onClick={() => run(`less:${line.id}`, async () => setDrawer(await changeQuantity(line.id, line.quantity - 1)))}>{spinning(`less:${line.id}`) ? <Spinner /> : '−'}</button>
                             <span>{line.quantity}</span>
-                            <button type="button" aria-label="Increase quantity" disabled={pending} onClick={() => start(async () => setDrawer(await changeQuantity(line.id, line.quantity + 1)))}>+</button>
-                            <button type="button" className="link" disabled={pending} onClick={() => start(async () => setDrawer(await changeQuantity(line.id, 0)))}>Remove</button>
+                            <button type="button" aria-label="Increase quantity" disabled={busy} aria-busy={spinning(`more:${line.id}`)} onClick={() => run(`more:${line.id}`, async () => setDrawer(await changeQuantity(line.id, line.quantity + 1)))}>{spinning(`more:${line.id}`) ? <Spinner /> : '+'}</button>
+                            <button type="button" className="link" disabled={busy} aria-busy={spinning(`remove:${line.id}`)} onClick={() => run(`remove:${line.id}`, async () => setDrawer(await changeQuantity(line.id, 0)))}>{spinning(`remove:${line.id}`) ? <Spinner /> : null}Remove</button>
                           </div>
                         </div>
                         <span className="price">{line.amount}{line.compareAt ? <s className="compare">{line.compareAt}</s> : null}</span>
@@ -106,15 +118,16 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
                           <button
                             type="button"
                             aria-label={`Add ${product.title} to cart`}
-                            disabled={pending}
+                            disabled={busy}
+                            aria-busy={spinning(`add:${product.variantId}`)}
                             onClick={() =>
-                              start(async () => {
+                              run(`add:${product.variantId}`, async () => {
                                 track('product_added_to_cart', { productId: product.productId, variantId: product.variantId, quantity: 1 });
                                 setDrawer(await addFromDrawer(product.variantId));
                               })
                             }
                           >
-                            Add
+                            {spinning(`add:${product.variantId}`) ? <Spinner /> : null}Add
                           </button>
                         </li>
                       ))}
@@ -127,7 +140,7 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
               <footer className="drawer-foot">
                 <p>Subtotal ({drawer.count} {drawer.count === 1 ? 'item' : 'items'}) <strong>{drawer.subtotal}</strong></p>
                 {checkoutError ? <p className="error">{checkoutError}</p> : null}
-                <button type="button" className="button primary" disabled={pending} onClick={checkout}>Checkout</button>
+                <button type="button" className="button primary" disabled={busy} aria-busy={spinning('checkout')} onClick={checkout}>{spinning('checkout') ? <Spinner /> : null}Checkout</button>
                 <Link href="/cart" className="button secondary" onClick={() => setOpen(false)}>View Cart</Link>
               </footer>
             ) : null}

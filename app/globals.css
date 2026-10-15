@@ -25,7 +25,7 @@ main.page { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .pdp img, .pdp .placeholder { width: 100%; border-radius: 8px; background: #f4f4f4; min-height: 320px; object-fit: cover; }
 .pdp-price { font-size: 28px; }
 .buttons { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; max-width: 320px; }
-.button { display: inline-block; padding: 12px 20px; border-radius: 6px; font-size: 16px; text-align: center; text-decoration: none; cursor: pointer; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 6px; font-size: 16px; text-align: center; text-decoration: none; cursor: pointer; }
 .button.primary { background: var(--blue); color: #fff; border: 0; }
 .button.secondary { background: #fff; color: var(--blue); border: 2px solid var(--blue); }
 .button.shop-pay { background: #5a31f4; color: #fff; }
@@ -67,3 +67,14 @@ button.icon { background: none; border: 0; font-size: 24px; line-height: 1; curs
 .qty button:not(.link) { width: 28px; height: 28px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
 .drawer-foot { border-top: 1px solid var(--line); padding: 16px 20px; display: grid; gap: 10px; }
 .drawer-foot p { display: flex; justify-content: space-between; margin: 0; }
+
+/* Spinners for buttons that wait on the server (components/Spinner.tsx). */
+.spinner { display: inline-block; flex: none; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -0.15em; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1.6s; } }
+[aria-busy="true"] { cursor: progress; }
+button:disabled:not([aria-busy="true"]) { opacity: 0.6; cursor: not-allowed; }
+.qty button:not(.link), .drawer-recs button, button.link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.drawer-head h2 { display: flex; align-items: center; gap: 8px; }
+.drawer-body.loading { display: flex; align-items: center; gap: 8px; }
+form.country { display: flex; align-items: center; gap: 6px; }

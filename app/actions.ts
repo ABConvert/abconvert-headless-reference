@@ -21,16 +21,23 @@ export async function addToCart(variantId: string): Promise<Drawer> {
   }
 }
 
-/** Buy Now skips the cart: a new cart with both sets of attributes, straight to checkout. */
-export async function buyNow(variantId: string): Promise<void> {
-  const context = await cartContext();
-  const cart = await createCart({
-    lines: [{ variantId, quantity: 1, attributes: [{ key: '_added_from', value: 'buy_now' }, ...context.abconvert.getCartLineAttributes()] }],
-    attributes: cartAttributes(context.abconvert),
-    country: context.country,
-    buyerIp: context.call.buyerIp,
-  });
-  redirect(cart.checkoutUrl);
+/**
+ * Buy Now skips the cart: a new cart with both sets of attributes. The button
+ * goes to the checkout URL it returns, or shows the error.
+ */
+export async function buyNow(variantId: string): Promise<{ url: string } | { error: string }> {
+  try {
+    const context = await cartContext();
+    const cart = await createCart({
+      lines: [{ variantId, quantity: 1, attributes: [{ key: '_added_from', value: 'buy_now' }, ...context.abconvert.getCartLineAttributes()] }],
+      attributes: cartAttributes(context.abconvert),
+      country: context.country,
+      buyerIp: context.call.buyerIp,
+    });
+    return { url: cart.checkoutUrl };
+  } catch (error) {
+    return { error: message(error) };
+  }
 }
 
 /** What the cart drawer shows when it opens: the cart, priced on the server. */
