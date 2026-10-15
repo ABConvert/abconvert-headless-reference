@@ -1,0 +1,172 @@
+# ABConvert headless reference store
+
+A Next.js storefront that runs ABConvert tests with `@abconvert/headless`, set up the way a Next.js 14 App Router store behind Google Cloud CDN is: page caching, a locale rewrite in its own middleware, Storefront API carts through server actions, and checkout on Shopify.
+
+Use it to see a working integration, to copy from, and to check your own store against.
+
+| Your stack | In this store |
+|---|---|
+| Next.js 14.2 App Router, React 18 | `next@14.2.35`, `react@18.3.1` |
+| Pages cached with ISR | Product and collection pages `revalidate = 60`; home, cart and search render per request |
+| A locale segment the visitor never sees | `middleware.ts` rewrites `/products/x` to `app/[locale]/products/x` and redirects `/en/...` to the clean URL |
+| `Cache-Control: public, s-maxage=60` on product and collection pages | A `headers()` rule in `next.config.mjs` |
+| Google Cloud CDN, cache key on the path | `scripts/cdn.mjs`, a local stand-in that behaves the same way |
+| Storefront API through the Headless channel | `lib/shopify.ts`, with the private token on the server |
+| Add to Cart, Buy Now, Buy with Shop Pay | Server actions and a cart permalink |
+| Prices by country | A country selector; `@inContext(country:)` and the cart's `buyerIdentity.countryCode` |
+
+## Quick start
+
+You need Node.js 18.18 or later.
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. With nothing configured, the store reads `hardware.mock.shop`, Shopify's public sample catalog: pages and carts work, but no test runs, because ABConvert is not installed on that store. Open the **ABConvert** panel at the bottom right to see what the SDK knows on each page.
+
+## Run it end to end on a dev store
+
+This is the real check: a test price on your storefront, the same price in Shopify checkout, and the order counted in the test.
+
+### 1. Connect the store through the Headless channel
+
+1. In the Shopify admin, install the [Headless channel](https://apps.shopify.com/headless) and click **Create storefront**. Shopify's guide: [Getting started with the Storefront API](https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/getting-started).
+2. Open the storefront (**Sales channels**, **Headless**, your storefront). In **Storefront API tokens**, copy the private access token, and the public one as a fallback.
+3. In **Storefront API permissions**, keep read access to product listings and write access to checkouts, which the cart needs. Shopify lists `unauthenticated_read_product_listings` and `unauthenticated_write_checkouts` for [international pricing](https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/markets/international-pricing).
+
+Every Storefront API call in this store runs on the server, so it sends the private token in `Shopify-Storefront-Private-Token` and the shopper's IP in `Shopify-Storefront-Buyer-IP` on the requests a shopper causes, as [Shopify asks](https://shopify.dev/docs/api/storefront#authentication). Without the buyer IP, Shopify may throttle those requests or treat them as a bot. Never send the private token to the browser.
+
+### 2. Connect ABConvert
+
+1. Install ABConvert on the same store, and ask your ABConvert contact to turn on the headless SDK for it.
+2. In ABConvert, open **Settings**, **Headless Storefront**, click **Create Storefront Key**, and copy the key. The key is public: it identifies your store's tests, and you can revoke it at any time.
+
+### 3. Configure and run
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in:
+
+```bash
+SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
+SHOPIFY_STOREFRONT_PRIVATE_TOKEN=your-private-access-token
+ABCONVERT_SHOP=your-store.myshopify.com
+ABCONVERT_STOREFRONT_KEY=your-storefront-key
+SITE_URL=http://localhost:3000
+```
+
+Then build and start. Caching only happens in a production build: `npm run dev` renders every request.
+
+```bash
+npm run build && npm run start
+```
+
+In a second terminal, put the CDN stand-in in front and browse http://localhost:8080 instead:
+
+```bash
+npm run cdn
+```
+
+### 4. Create a test and check it
+
+1. In ABConvert, create a price test on one of your products and leave it in **Preview**.
+2. Copy its preview link, replace the domain with `http://localhost:8080`, and add `&abconvert_force=<test ID>:1`. The product page shows Variant A's price. The panel shows the page key and the forced test group.
+3. Open a collection with that product and the cart. Both show the same price.
+4. Go to checkout three ways: **Checkout** from the cart, **Buy Now**, and **Buy with Shop Pay**. Each checkout line shows Variant A's price.
+5. Change the force to `:0`. Every page and checkout show Control's price.
+6. Launch the test. Wait a minute, open a private window without the preview link, and browse as a new visitor. The browser sends the assignment, the exposure, page views and add to cart to ABConvert; a completed order shows in the test's results.
+
+The full walk-through is in [Preview and check your integration](https://docs.abconvert.io/headless-sdk/preview).
+
+## How it works
+
+```
+Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─▶ Next.js cache
+           (key: the path)     planMiddleware()       /en/products/x            one copy
+                               decides test groups    or                        per path
+                               sets cookies once      /en/abconvert/<key>/products/x
+                               marks tested pages     (rendered from the key,
+                               private                 nothing about the visitor)
+```
+
+1. **The middleware decides.** `planMiddleware` reads or creates the visitor, places them in each test, writes the SDK's cookies only when they change, and redirects for a URL redirect test.
+2. **A tested page is rewritten to a page key.** When a test changes the page for this visitor, the request goes to `app/[locale]/abconvert/[pageKey]/...`. The page key names the test groups and nothing about the visitor, so Next.js caches one copy per test group combination, and everyone in those test groups shares it. Pages no test changes are not rewritten and are cached once, as without ABConvert.
+3. **A path-keyed CDN never stores a tested page.** The middleware sets `cache-control: private` on every page a test can change, for every visitor. The CDN passes those pages to Next.js, which still answers from its own cache. Untested pages keep `public, s-maxage=60` and are served by the CDN.
+4. **The browser tracks.** The provider in each layout reads the visitor from the cookies and sends assignments, exposures and events.
+5. **The cart carries the test groups to checkout.** The cart actions write ABConvert's cart and line attributes. ABConvert's Shopify Functions read them in checkout and charge the test price; the web pixel and the order carry the same visitor.
+
+## Where ABConvert plugs in
+
+| File | What it does | Docs |
+|---|---|---|
+| `lib/abconvert.ts` | The SDK options, shared by everything below | [Next.js, step 2](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-middleware) |
+| `middleware.ts` | `planMiddleware`, merged with the store's own locale rewrite | [Next.js, step 2](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-middleware) |
+| `app/[locale]/abconvert/[pageKey]/` | The page key routes: the same pages, rendered from the key | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-3-add-the-page-key-routes) |
+| `app/[locale]/*/layout.tsx` | `ABConvertProvider` with the page's state | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-3-add-the-page-key-routes) |
+| `components/ProductView.tsx` | Canonical URLs built from the route params | [Next.js, step 4](https://docs.abconvert.io/headless-sdk/nextjs#step-4-build-canonical-urls-from-the-route) |
+| `components/Price.tsx` | The test price, else the Storefront API price, and the exposure | [Prices](https://docs.abconvert.io/headless-sdk/prices) |
+| `app/actions.ts`, `app/[locale]/(store)/cart/page.tsx` | Cart and line attributes on every cart change and on the cart page | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
+| `components/Tracking.tsx`, `ProductViewed.tsx`, `AddToCart.tsx` | Page views, product views and add to cart | [Tracking](https://docs.abconvert.io/headless-sdk/tracking) |
+| `components/ShopPayLink.tsx` | A cart permalink with the visitor's test groups | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
+| `components/DebugPanel.tsx` | The panel: visitor, page key, test groups, forcing | [Preview](https://docs.abconvert.io/headless-sdk/preview) |
+
+## Caching rules to keep
+
+- **Keep `private` on every response that has it.** The middleware's `Cache-Control` wins over a `headers()` rule in `next.config.mjs`, as in this store. A proxy or load balancer that rewrites `Cache-Control` in front of Next.js must leave `private` alone. If it sets `public` on every product page, the CDN serves one visitor's test price to everyone. Try it: `ORIGIN_REWRITE=force npm run cdn`.
+- **Cloud CDN does not cache a response whose `Vary` names headers outside its allowed list**, such as the `RSC` that Next.js adds. A storefront whose product pages answer `Vary: Accept-Encoding` already rewrites it. Keep doing so for pages without `private`.
+- **Client-side navigations bypass the CDN.** Next.js fetches them with an `RSC` header, and Next.js answers them from its own cache.
+- **Optional: cache tested pages at the CDN too.** Add the `abconvert-key` cookie to the cache key, then set `cdnKeyedByCookie: true` in `lib/abconvert.ts`. The cookie holds the visitor's test groups and no visitor or session ID. Set the option only after the CDN keys on the cookie.
+
+  ```bash
+  gcloud compute backend-services update YOUR_BACKEND_SERVICE --global --cache-key-include-named-cookie=abconvert-key
+  ```
+
+  See Google's [cache key settings](https://docs.cloud.google.com/cdn/docs/using-cache-keys) and [caching rules](https://docs.cloud.google.com/cdn/docs/caching).
+
+## Checkout
+
+- Shopify recommends putting checkout on a subdomain of your storefront's domain, such as `checkout.example.com` for `example.com`, so the shopper's consent carries into checkout. See [Shopify's consent guide](https://shopify.dev/docs/storefronts/headless/hydrogen/analytics/consent).
+- The cart ID carries a secret key. This store keeps it in an httpOnly cookie and never puts it in a page, as [Shopify asks](https://shopify.dev/docs/storefronts/headless/building-with-the-storefront-api/cart/manage).
+- Checkout charges the test price only when the cart has ABConvert's attributes. If checkout shows the original price, open **Cart attributes** on the cart page: `groupInfo` must name the test.
+
+## Check your own store
+
+`scripts/check.mjs` checks the routing and caching rules with plain HTTP requests. Point it at a product page a running price test covers, and one no test covers:
+
+```bash
+BASE=http://localhost:8080 TESTED=/products/your-tested-product UNTESTED=/products/another-product npm run check
+```
+
+## The SDK package
+
+Until `@abconvert/headless` is on npm, the store installs it from `vendor/abconvert-headless-0.1.0.tgz`. Once it is published, replace the dependency with the published version:
+
+```bash
+npm install @abconvert/headless@^0.1.0
+```
+
+## Next.js versions
+
+The SDK supports the App Router on Next.js 14, 15.1 to 15.4, and 16. Next.js 15.5 renders every page a middleware rewrites on every request, with or without ABConvert, and 15.0 does not cache a page on its first request. On Next.js 16, rename `middleware.ts` to `proxy.ts` and its function to `proxy` (`npx @next/codemod@canary middleware-to-proxy .`).
+
+## Project layout
+
+```
+middleware.ts                       locale rewrite + ABConvert plan
+next.config.mjs                     Cache-Control rule for product and collection pages
+lib/abconvert.ts                    SDK options, country
+lib/shopify.ts                      Storefront API: catalog and cart
+lib/request.ts                      the shopper's country and IP
+app/actions.ts                      Add to Cart, Buy Now, country
+app/[locale]/(store)/               pages no test changes for this visitor
+app/[locale]/abconvert/[pageKey]/   the same pages, rendered from a page key
+components/                         price, tracking, cart buttons, debug panel
+scripts/cdn.mjs                     Google Cloud CDN stand-in
+scripts/check.mjs                   routing and caching checks
+```
+
+This store sells one product variant per product and has no customer accounts. To target customers, pass `customer` to the SDK from your customer session: see [Targeting](https://docs.abconvert.io/headless-sdk/targeting#customer).
