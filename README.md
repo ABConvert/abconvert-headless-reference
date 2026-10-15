@@ -2,7 +2,7 @@
 
 A Next.js storefront that runs ABConvert tests with `@abconvert/headless`, set up the way a Next.js 14 App Router store behind Google Cloud CDN is: page caching, a locale rewrite in its own middleware, Storefront API carts through server actions, and checkout on Shopify.
 
-Use it to see a working integration, to copy from, and to check your own store against. [LEARNINGS.md](./LEARNINGS.md) lists what we learned building it, one short note per lesson.
+Use it to see a working integration, to copy from, and to check your own store against. Read [INTEGRATION-NOTES.md](./INTEGRATION-NOTES.md) before you integrate: one short rule per thing that matters, from caching to checkout.
 
 | Your stack | In this store |
 |---|---|
