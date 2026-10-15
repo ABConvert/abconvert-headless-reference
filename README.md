@@ -121,7 +121,7 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 - **Keep `private` on every response that has it.** The middleware's `Cache-Control` wins over a `headers()` rule in `next.config.mjs`, as in this store. A proxy or load balancer that rewrites `Cache-Control` in front of Next.js must leave `private` alone. If it sets `public` on every product page, the CDN serves one visitor's test price to everyone. Try it: `ORIGIN_REWRITE=force npm run cdn`.
 - **Cloud CDN does not cache a response whose `Vary` names headers outside its allowed list**, such as the `RSC` that Next.js adds. A storefront whose product pages answer `Vary: Accept-Encoding` already rewrites it. Keep doing so for pages without `private`.
 - **Client-side navigations bypass the CDN.** Next.js fetches them with an `RSC` header, and Next.js answers them from its own cache.
-- **Optional: cache tested pages at the CDN too.** By default a tested page goes past the CDN, and Next.js serves it from its own cache. Two settings let the CDN store tested pages too, one copy per combination of test groups. The order matters:
+- **Optional: cache tested pages at the CDN too.** By default a tested page goes past the CDN, and Next.js serves it from its own cache. That mode needs no CDN setting, and it is the mode to launch with. Once your tests run as expected, two settings let the CDN store tested pages too, one copy per combination of test groups. The order matters, and the cookie and the query parameters go in as one change:
 
   1. Add the `abconvert-key` cookie and ABConvert's three query parameters to the CDN's cache key. On Google Cloud CDN:
 
