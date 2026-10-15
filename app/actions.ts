@@ -5,8 +5,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { COUNTRY_COOKIE, countryOf } from '@/lib/abconvert';
-import { addToCurrentCart, cartAttributes, cartContext, currentCart } from '@/lib/cart';
-import { buyerIp, CART_COOKIE } from '@/lib/request';
+import { addToCurrentCart, cartAttributes, cartContext, currentCart, storedCart } from '@/lib/cart';
+import { CART_COOKIE } from '@/lib/request';
 import { createCart, updateCountry, updateQuantity } from '@/lib/shopify';
 import { drawerFor, type Drawer } from '@/lib/drawer';
 
@@ -92,8 +92,13 @@ export async function setCountry(form: FormData): Promise<void> {
   const country = countryOf(String(form.get('country')));
   const jar = await cookies();
   jar.set(COUNTRY_COOKIE, country, { path: '/', sameSite: 'lax' });
-  const cartId = jar.get(CART_COOKIE)?.value;
-  if (cartId) await updateCountry(cartId, { country, buyerIp: await buyerIp() });
+  // Reuse cart recovery when switching stores leaves a stale cookie behind.
+  if (jar.get(CART_COOKIE)?.value) {
+    const context = await cartContext();
+    const cart = await storedCart(context);
+    if (cart) await updateCountry(cart.id, context.call);
+    else jar.delete(CART_COOKIE);
+  }
   redirect(String(form.get('back') || '/'));
 }
 

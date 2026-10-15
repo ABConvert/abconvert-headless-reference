@@ -18,16 +18,18 @@ Use it to see a working integration, to copy from, and to check your own store a
 
 ## Quick start
 
-You need Node.js 18.18 or later.
+You need Node.js 20 or later.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 Open http://localhost:3000. With nothing configured, the store reads `hardware.mock.shop`, Shopify's public sample catalog: pages and carts work, but no test runs, because ABConvert is not installed on that store. Open the **ABConvert** panel at the bottom right to see what the SDK knows on each page.
 
 ## Run it end to end on a dev store
+
+Follow the ordered [customer E2E walkthrough](./E2E-TESTING.md) for prerequisites, price and URL-redirect checks, test payment, and attribution troubleshooting. A rendered page or successful HTTP check alone does not establish end-to-end success.
 
 This is the real check: a test price on your storefront, the same price in Shopify checkout, and the order counted in the test.
 
@@ -57,8 +59,11 @@ SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
 SHOPIFY_STOREFRONT_PRIVATE_TOKEN=your-private-access-token
 ABCONVERT_SHOP=your-store.myshopify.com
 ABCONVERT_STOREFRONT_KEY=your-storefront-key
-SITE_URL=http://localhost:3000
+SITE_URL=http://localhost:8080
+NEXT_PUBLIC_ABCONVERT_DEBUG=1
 ```
+
+The debug setting must be present **before the build** to show the ABConvert panel. `SITE_URL` is the origin you browse through the CDN.
 
 Then build and start. Caching only happens in a production build: `npm run dev` renders every request.
 

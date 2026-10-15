@@ -35,7 +35,7 @@ export const cartAttributes = (abconvert: ServerABConvert): Attribute[] => [...S
  * longer returns, such as one that finished checkout. A bad cookie must never
  * break Add to Cart: the next add makes a new cart and replaces it.
  */
-async function storedCart(context: CartContext): Promise<Cart | null> {
+export async function storedCart(context: CartContext): Promise<Cart | null> {
   const cartId = (await cookies()).get(CART_COOKIE)?.value;
   if (!cartId?.startsWith('gid://shopify/Cart/')) return null;
   try {
