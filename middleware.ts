@@ -40,4 +40,6 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ['/((?!_next/|api/|favicon.ico|robots.txt).*)'] };
+// Non-page routes stay out: a route handler or a webhook carries no browser
+// headers, so the SDK would take it for a page load and set cookies on it.
+export const config = { matcher: ['/((?!_next/|api/|favicon.ico|robots.txt|sitemap.xml).*)'] };

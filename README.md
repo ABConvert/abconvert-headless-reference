@@ -201,6 +201,7 @@ app/[locale]/abconvert/[pageKey]/   the same pages, rendered from a page key
 components/                         price, tracking, cart buttons, cart drawer, debug panel
 scripts/cdn.mjs                     Google Cloud CDN stand-in
 scripts/check.mjs                   routing and caching checks
+app/api/revalidate/route.ts         on-demand revalidation of a product page, both routes
 ```
 
 This store sells one product variant per product and has no customer accounts. To target customers, pass `customer` to the SDK from your customer session: see [Targeting](https://docs.abconvert.io/headless-sdk/targeting#customer).

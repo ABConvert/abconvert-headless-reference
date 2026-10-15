@@ -32,6 +32,9 @@ A headless store holds a copy of something in four places. Each has its own rule
 - Reading cookies or `useSearchParams()` in a page makes it render per request. Key your page view tracking on the path only.
 - Use Next.js 14, 15.1 to 15.4, or 16. Version 15.0 does not cache a page on its first request, and 15.5 renders every page behind a middleware rewrite on every request.
 - A middleware `Cache-Control` value wins over a `headers()` rule in `next.config`. A proxy that rewrites `Cache-Control` in front of Next.js must keep `private`.
+- Keep non-page routes out of the middleware matcher: route handlers, webhooks, anything under `/api`. A script's request has no browser headers, so the SDK would take it for a page load, assign it a test group and set cookies.
+- On-demand revalidation by path refreshes the usual route only. A tested product page also has copies under the page key route, so revalidate that route by pattern too: `revalidatePath('/[locale]/abconvert/[pageKey]/products/[handle]', 'page')`. `app/api/revalidate/route.ts` shows both calls.
+- A server action from a tested page is rewritten to the page's key, so its response renders from the same route as the page. That needs the `next-action` header JavaScript sends; a form posted before hydration, or with JavaScript off, renders from the usual route until the next page load.
 
 ## Cart, drawer and checkout
 
