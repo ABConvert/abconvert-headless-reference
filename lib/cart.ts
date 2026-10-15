@@ -29,10 +29,26 @@ export async function cartContext(): Promise<CartContext> {
 /** The store's own cart attributes and ABConvert's, together: Shopify replaces the whole list on each update. */
 export const cartAttributes = (abconvert: ServerABConvert): Attribute[] => [...STORE_ATTRIBUTES, ...abconvert.getCartAttributes()];
 
+/**
+ * The cart the cookie names, or null: no cookie, a value that is not a Shopify
+ * cart ID (a stale cookie from another app on this host), or a cart Shopify no
+ * longer returns, such as one that finished checkout. A bad cookie must never
+ * break Add to Cart: the next add makes a new cart and replaces it.
+ */
+async function storedCart(context: CartContext): Promise<Cart | null> {
+  const cartId = (await cookies()).get(CART_COOKIE)?.value;
+  if (!cartId?.startsWith('gid://shopify/Cart/')) return null;
+  try {
+    return await getCart(cartId, context.call);
+  } catch (error) {
+    console.warn('[cart] stored cart could not be read, starting a new one:', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 /** The visitor's cart with attributes that match their tests now, or null when they have none. */
 export async function currentCart(context: CartContext): Promise<Cart | null> {
-  const cartId = (await cookies()).get(CART_COOKIE)?.value;
-  const cart = cartId ? await getCart(cartId, context.call) : null;
+  const cart = await storedCart(context);
   if (!cart?.lines.length) return cart;
   const attributes = cartAttributes(context.abconvert);
   return sameAttributes(cart.attributes, attributes) ? cart : updateAttributes(cart.id, attributes, context.call);
@@ -42,9 +58,7 @@ export async function currentCart(context: CartContext): Promise<Cart | null> {
 export async function addToCurrentCart(context: CartContext, variantId: string, addedFrom: string): Promise<Cart> {
   const line = { variantId, quantity: 1, attributes: [{ key: '_added_from', value: addedFrom }, ...context.abconvert.getCartLineAttributes()] };
   const attributes = cartAttributes(context.abconvert);
-  const jar = await cookies();
-  const existing = jar.get(CART_COOKIE)?.value;
-  let cart = existing ? await getCart(existing, context.call) : null;
+  let cart = await storedCart(context);
   if (!cart) {
     cart = await createCart({ lines: [line], attributes, country: context.country, buyerIp: context.call.buyerIp });
   } else {
@@ -52,6 +66,6 @@ export async function addToCurrentCart(context: CartContext, variantId: string, 
     if (!sameAttributes(cart.attributes, attributes)) cart = await updateAttributes(cart.id, attributes, context.call);
   }
   // The cart ID carries a secret key: an httpOnly cookie keeps it out of the page.
-  jar.set(CART_COOKIE, cart.id, { path: '/', sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+  (await cookies()).set(CART_COOKIE, cart.id, { path: '/', sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
   return cart;
 }
