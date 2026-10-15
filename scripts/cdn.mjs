@@ -25,6 +25,11 @@
 // adds those query parameters, as a query string whitelist does. Use both with
 // ABCONVERT_CDN_KEYED_BY_COOKIE=1 in the store to try the cookie-keyed mode.
 //
+// CDN_COUNTRY=US adds `x-country: US` to every request it forwards, as a Google
+// Cloud load balancer's custom request header `x-country:{client_region}`
+// does. The SDK reads it for tests that target visitors by country. Restart
+// with another code to be a visitor from another country.
+//
 // ORIGIN_REWRITE=force shows what goes wrong when a layer in front of Next.js
 // sets `public, s-maxage=60` on every product and collection page, `private`
 // included: the CDN then serves one visitor's test price to everyone.
@@ -33,6 +38,7 @@ import http from 'node:http';
 const PORT = Number(process.env.CDN_PORT || 8080);
 const ORIGIN = { host: '127.0.0.1', port: Number(process.env.ORIGIN_PORT || 3000) };
 const REWRITE = process.env.ORIGIN_REWRITE || '';
+const COUNTRY = (process.env.CDN_COUNTRY || '').toUpperCase();
 const KEY_COOKIES = (process.env.CDN_KEY_COOKIES || '').split(',').map((name) => name.trim()).filter(Boolean);
 // Query parameters that are part of the key, like Cloud CDN's query string
 // whitelist. ABConvert's preview and force links live in the query string, so
@@ -86,7 +92,7 @@ http
     if (entry) cache.delete(key);
 
     stats.misses++;
-    const upstream = http.request({ ...ORIGIN, method: req.method, path: req.url, headers: { ...req.headers, host: req.headers.host ?? `localhost:${PORT}`, 'x-forwarded-for': req.socket.remoteAddress ?? '' } }, (origin) => {
+    const upstream = http.request({ ...ORIGIN, method: req.method, path: req.url, headers: { ...req.headers, host: req.headers.host ?? `localhost:${PORT}`, 'x-forwarded-for': req.socket.remoteAddress ?? '', ...(COUNTRY ? { 'x-country': COUNTRY } : {}) } }, (origin) => {
       const chunks = [];
       origin.on('data', (chunk) => chunks.push(chunk));
       origin.on('end', () => {
@@ -104,4 +110,4 @@ http
     upstream.on('error', (error) => { res.writeHead(502); res.end(String(error)); });
     req.pipe(upstream);
   })
-  .listen(PORT, '127.0.0.1', () => console.log(`CDN on http://localhost:${PORT} -> origin :${ORIGIN.port}${REWRITE ? ` (ORIGIN_REWRITE=${REWRITE})` : ''}${KEY_COOKIES.length || KEY_QUERY.length ? `, cache key: path${KEY_QUERY.length ? ` + ?${KEY_QUERY.join(', ?')}` : ''}${KEY_COOKIES.length ? ` + ${KEY_COOKIES.join(', ')}` : ''}` : ''}`));
+  .listen(PORT, '127.0.0.1', () => console.log(`CDN on http://localhost:${PORT} -> origin :${ORIGIN.port}${REWRITE ? ` (ORIGIN_REWRITE=${REWRITE})` : ''}${COUNTRY ? `, x-country: ${COUNTRY}` : ''}${KEY_COOKIES.length || KEY_QUERY.length ? `, cache key: path${KEY_QUERY.length ? ` + ?${KEY_QUERY.join(', ?')}` : ''}${KEY_COOKIES.length ? ` + ${KEY_COOKIES.join(', ')}` : ''}` : ''}`));

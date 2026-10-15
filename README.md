@@ -150,6 +150,17 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 
   See Google's [cache key settings](https://docs.cloud.google.com/cdn/docs/using-cache-keys) and [caching rules](https://docs.cloud.google.com/cdn/docs/caching).
 
+## Country targeting
+
+A test whose audience targets a country needs the visitor's country on every request. Shopify Oxygen, Cloudflare and Vercel add it. On Google Cloud, have the load balancer add it as a custom request header:
+
+```bash
+gcloud compute backend-services update YOUR_BACKEND_SERVICE --global \
+  --custom-request-header='x-country:{client_region}'
+```
+
+The flag replaces the backend service's custom request headers, so list any you already set alongside it. Without the header, the SDK makes no decision for such a test, and every visitor sees your original store. Try it locally with `CDN_COUNTRY=US npm run cdn`.
+
 ## After you launch, edit or end a test
 
 For up to about two minutes, a page can still show the old price: up to 60 seconds for the SDK's copy of your tests on each server, plus up to 60 seconds at the CDN for a page it stored before the change. Next.js adds no delay, because a change gives tested pages a new page key. The cart and the drawer show Shopify's cart cost, which is what checkout charges, so the shopper sees the right price before paying.
