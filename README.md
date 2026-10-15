@@ -179,11 +179,7 @@ BASE=http://localhost:8080 TESTED=/products/your-tested-product UNTESTED=/produc
 
 ## The SDK package
 
-Until `@abconvert/headless` is on npm, the store installs it from `vendor/abconvert-headless-0.1.0.tgz`. Once it is published, replace the dependency with the published version:
-
-```bash
-npm install @abconvert/headless@^0.1.0
-```
+The store installs [`@abconvert/headless`](https://www.npmjs.com/package/@abconvert/headless) from npm. Its five entries are `@abconvert/headless`, `/react`, `/next`, `/hydrogen` and `/hydrogen/analytics-provider`; this store uses the first three.
 
 ## Next.js versions
 
