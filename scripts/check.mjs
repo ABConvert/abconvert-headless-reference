@@ -15,11 +15,14 @@ const KEYED = process.env.ABCONVERT_CDN_KEYED_BY_COOKIE === '1';
 const viaCdn = await fetch(`${BASE}/__cdn/stats`).then((r) => r.ok).catch(() => false);
 
 let failed = 0;
+let passed = 0;
+let skipped = 0;
 const result = (ok, name, detail = '') => {
   if (!ok) failed++;
+  else passed++;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
 };
-const skip = (name, why) => console.log(`SKIP  ${name}  (${why})`);
+const skip = (name, why) => { skipped++; console.log(`SKIP  ${name}  (${why})`); };
 
 const GOOGLEBOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
@@ -100,5 +103,6 @@ if (UNTESTED) {
   skip('Untested page checks', 'set UNTESTED to a product page no test covers');
 }
 
-console.log(failed ? `\n${failed} check(s) failed` : '\nAll checks passed');
+console.log(`\n${passed} passed, ${failed} failed, ${skipped} check groups skipped.`);
+console.log(skipped ? 'Coverage incomplete: supply the missing inputs above.' : 'Routing/cache checks complete. Checkout and attribution still need the browser walkthrough.');
 process.exit(failed ? 1 : 0);

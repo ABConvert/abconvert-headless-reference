@@ -3,3 +3,7 @@ node_modules
 .env
 .env.local
 *.tsbuildinfo
+
+# Local E2E evidence may contain visitor metadata.
+test-results/
+.preview-url

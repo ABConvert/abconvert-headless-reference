@@ -10,7 +10,8 @@
     "start": "next start -p 3000",
     "cdn": "node scripts/cdn.mjs",
     "check": "node scripts/check.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:redirect": "node scripts/check-redirect.mjs"
   },
   "dependencies": {
     "@abconvert/headless": "^0.1.2",
@@ -26,6 +27,6 @@
     "typescript": "5.4.5"
   },
   "engines": {
-    "node": ">=18.18"
+    "node": ">=20"
   }
 }
