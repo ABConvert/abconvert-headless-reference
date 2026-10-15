@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@abconvert/headless": "file:vendor/abconvert-headless-0.1.0.tgz",
-    "next": "14.2.35",
+    "next": "16.4.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "server-only": "0.0.1"
