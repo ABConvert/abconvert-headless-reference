@@ -2,6 +2,7 @@
   "name": "abconvert-headless-reference",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "A reference Next.js storefront that runs ABConvert tests with @abconvert/headless, set up like a Next.js 14 App Router store behind Google Cloud CDN.",
   "type": "module",
   "scripts": {
