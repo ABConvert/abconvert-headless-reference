@@ -110,11 +110,11 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 
 | File | What it does | Docs |
 |---|---|---|
-| `lib/abconvert.ts` | The SDK options, shared by everything below | [Next.js, step 2](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-middleware) |
-| `middleware.ts` | `planMiddleware`, merged with the store's own locale rewrite | [Next.js, step 2](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-middleware) |
-| `app/[locale]/abconvert/[pageKey]/` | The page key routes: the same pages, rendered from the key | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-3-add-the-page-key-routes) |
-| `app/[locale]/*/layout.tsx` | `ABConvertProvider` with the page's state | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-3-add-the-page-key-routes) |
-| `components/ProductView.tsx` | Canonical URLs built from the route params | [Next.js, step 4](https://docs.abconvert.io/headless-sdk/nextjs#step-4-build-canonical-urls-from-the-route) |
+| `lib/abconvert.ts` | The SDK options, shared by everything below | [Next.js, step 2](https://docs.abconvert.io/headless-sdk/nextjs#step-1-install-the-package-and-add-the-middleware) |
+| `middleware.ts` | `planMiddleware`, merged with the store's own locale rewrite | [Next.js, step 2](https://docs.abconvert.io/headless-sdk/nextjs#step-1-install-the-package-and-add-the-middleware) |
+| `app/[locale]/abconvert/[pageKey]/` | The page key routes: the same pages, rendered from the key | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-tested-routes) |
+| `app/[locale]/*/layout.tsx` | `ABConvertProvider` with the page's state | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-tested-routes) |
+| `components/ProductView.tsx` | Canonical URLs built from the route params | [Next.js, step 4](https://docs.abconvert.io/headless-sdk/nextjs#common-mistakes) |
 | `components/Price.tsx` | The test price, else the Storefront API price, and the exposure | [Prices](https://docs.abconvert.io/headless-sdk/prices) |
 | `lib/cart.ts`, `app/actions.ts` | Cart and line attributes on every cart change, checked again before checkout | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
 | `lib/drawer.ts`, `components/CartDrawer.tsx` | The cart drawer, priced on the server | [Cart](https://docs.abconvert.io/headless-sdk/cart) |

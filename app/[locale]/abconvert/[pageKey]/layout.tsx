@@ -1,7 +1,7 @@
 // Pages a test changes. The middleware rewrote the request here, to a path that
 // names the visitor's test groups (the page key). The client is built from
 // that key, never from the request, so Next.js keeps one cached copy per key.
-// https://docs.abconvert.io/headless-sdk/nextjs#step-3-add-the-page-key-routes
+// https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-tested-routes
 import { ABConvertProvider } from '@abconvert/headless/react';
 import { createABConvert } from '@abconvert/headless/next';
 import { abconvertOptions } from '@/lib/abconvert';

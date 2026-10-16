@@ -1,6 +1,6 @@
 // The SDK options, in one place: the middleware, the layouts, the pages and
 // the cart actions all read them.
-// https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-middleware
+// https://docs.abconvert.io/headless-sdk/nextjs#step-1-install-the-package-and-add-the-middleware
 import type { NextOptions } from '@abconvert/headless/next';
 
 export const abconvertOptions: NextOptions = {
@@ -18,7 +18,7 @@ export const abconvertOptions: NextOptions = {
   // `abconvert_experiment_id` to its cache key, and turn it off before you
   // remove them. In the other
   // order, a CDN that caches by path alone serves one test group's page to everyone.
-  // https://docs.abconvert.io/headless-sdk/nextjs#cache-tested-pages-at-your-cdn
+  // https://docs.abconvert.io/headless-sdk/nextjs-caching#cache-tested-pages-at-your-cdn
   cdnKeyedByCookie: process.env.ABCONVERT_CDN_KEYED_BY_COOKIE === '1',
   // A failed or slow load shows the original store for that request. Log it.
   onError: (error) => console.error('[abconvert]', error.message),

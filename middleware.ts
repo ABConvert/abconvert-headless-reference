@@ -5,7 +5,7 @@
 // that names `/en` itself is sent to the clean URL. `planMiddleware` decides
 // the visitor's test groups, and says how to redirect, rewrite and cache the
 // request; this file applies that next to its own locale rewrite.
-// https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-middleware
+// https://docs.abconvert.io/headless-sdk/nextjs#step-1-install-the-package-and-add-the-middleware
 import { NextResponse, type NextRequest } from 'next/server';
 import { planMiddleware } from '@abconvert/headless/next';
 import { abconvertOptions, COUNTRY_COOKIE, countryOf } from './lib/abconvert';

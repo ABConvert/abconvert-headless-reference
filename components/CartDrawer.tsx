@@ -122,8 +122,10 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
                             aria-busy={spinning(`add:${product.variantId}`)}
                             onClick={() =>
                               run(`add:${product.variantId}`, async () => {
-                                track('product_added_to_cart', { productId: product.productId, variantId: product.variantId, quantity: 1 });
-                                setDrawer(await addFromDrawer(product.variantId));
+                                const contents = await addFromDrawer(product.variantId);
+                                // Track only a line that was added
+                                if (!contents.error) track('product_added_to_cart', { productId: product.productId, variantId: product.variantId, quantity: 1 });
+                                setDrawer(contents);
                               })
                             }
                           >

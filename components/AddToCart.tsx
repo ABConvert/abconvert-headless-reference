@@ -1,7 +1,8 @@
 'use client';
-// Add to Cart and Buy Now. Both report the add to cart, then post a server
-// action that writes ABConvert's cart attributes. Add to Cart opens the cart
-// drawer with what the server returned; Buy Now goes to checkout.
+// Add to Cart and Buy Now. Both post a server action that writes ABConvert's
+// cart attributes, then report the add to cart only once the line was added.
+// Add to Cart opens the cart drawer with what the server returned; Buy Now goes
+// to checkout.
 import { useState, useTransition } from 'react';
 import { useABConvert } from '@abconvert/headless/react';
 import { addToCart, buyNow } from '@/app/actions';
@@ -19,22 +20,28 @@ export function AddToCart({ productId, variantId }: { productId: string; variant
   const [error, setError] = useState('');
   const busy = pending || leaving;
   const spinning = (button: Clicked) => busy && clicked === button;
+  const report = () => track('product_added_to_cart', { productId, variantId, quantity: 1 });
 
   const run = (button: Clicked, action: () => Promise<void>) => {
     setClicked(button);
     setError('');
-    track('product_added_to_cart', { productId, variantId, quantity: 1 });
     start(action);
   };
   const buy = () =>
     run('buy', async () => {
       const result = await buyNow(variantId);
       if ('url' in result) {
+        report();
         setLeaving(true);
         window.location.assign(result.url);
       } else setError(result.error);
     });
-  const add = () => run('add', async () => drawer.open(await addToCart(variantId)));
+  const add = () =>
+    run('add', async () => {
+      const contents = await addToCart(variantId);
+      if (!contents.error) report();
+      drawer.open(contents);
+    });
 
   return (
     <>

@@ -1,7 +1,7 @@
 'use server';
 // The cart actions. Each builds the ABConvert client from the request (no
 // page key): the cart needs the visitor, which the middleware passed on.
-// https://docs.abconvert.io/headless-sdk/nextjs#step-5-write-the-cart-attributes
+// https://docs.abconvert.io/headless-sdk/nextjs#step-3-write-the-cart-attributes
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { COUNTRY_COOKIE, countryOf } from '@/lib/abconvert';
