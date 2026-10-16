@@ -99,7 +99,7 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
                             <button type="button" className="link" disabled={busy} aria-busy={spinning(`remove:${line.id}`)} onClick={() => run(`remove:${line.id}`, async () => setDrawer(await changeQuantity(line.id, 0)))}>{spinning(`remove:${line.id}`) ? <Spinner /> : null}Remove</button>
                           </div>
                         </div>
-                        <span className="price">{line.amount}{line.compareAt ? <s className="compare">{line.compareAt}</s> : null}</span>
+                        <span className="price">{line.amount}{line.compareAt ? <s className="compare">{line.compareAt}</s> : null}{line.each ? <span className="each">{line.each} each</span> : null}</span>
                       </li>
                     ))}
                   </ul>

@@ -45,13 +45,13 @@ export default async function CartPage() {
       ) : (
         <>
           <table>
-            <thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
+            <thead><tr><th>Item</th><th>Qty</th><th>Total</th></tr></thead>
             <tbody>
               {lines.map((line) => (
                 <tr key={line.id}>
                   <td><Link href={`/products/${line.handle}`}>{line.title}</Link></td>
                   <td>{line.quantity}</td>
-                  <td className="price">{abconvert.formatPrice(line.cost.amount, line.cost.currency)}</td>
+                  <td className="price">{abconvert.formatPrice(line.total.amount, line.total.currency)}{line.quantity > 1 ? <span className="each">{abconvert.formatPrice(line.cost.amount, line.cost.currency)} each</span> : null}</td>
                 </tr>
               ))}
             </tbody>

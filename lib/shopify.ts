@@ -40,6 +40,8 @@ export interface CartLine {
   image: { url: string; altText: string | null } | null;
   /** What checkout charges per unit. Once the cart carries ABConvert's attributes, it includes the test price. */
   cost: Money;
+  /** The same for the whole line: the unit price times the quantity, before cart-level discounts. */
+  total: Money;
 }
 export interface Cart { id: string; checkoutUrl: string; attributes: Attribute[]; lines: CartLine[]; subtotal: Money }
 
@@ -166,7 +168,7 @@ const CART_FIELDS = `
     nodes {
       id quantity
       attributes { key value }
-      cost { amountPerQuantity { amount currencyCode } }
+      cost { amountPerQuantity { amount currencyCode } subtotalAmount { amount currencyCode } }
       merchandise { ... on ProductVariant { id image { url altText } product { id handle title } } }
     }
   }
@@ -174,7 +176,7 @@ const CART_FIELDS = `
 
 type RawCart = {
   id: string; checkoutUrl: string; attributes: Attribute[]; cost: { subtotalAmount: RawMoney };
-  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; cost: { amountPerQuantity: RawMoney }; merchandise: { id: string; image: { url: string; altText: string | null } | null; product: { id: string; handle: string; title: string } } }[] };
+  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; cost: { amountPerQuantity: RawMoney; subtotalAmount: RawMoney }; merchandise: { id: string; image: { url: string; altText: string | null } | null; product: { id: string; handle: string; title: string } } }[] };
 };
 type Payload = { cart: RawCart | null; userErrors: { message: string }[] };
 
@@ -197,6 +199,7 @@ function toCart(payload: Payload | { cart: RawCart | null }): Cart | null {
       handle: line.merchandise.product.handle,
       image: line.merchandise.image,
       cost: money(line.cost.amountPerQuantity),
+      total: money(line.cost.subtotalAmount),
     })),
   };
 }

@@ -16,7 +16,8 @@ export interface DrawerPrice {
   /** The price test that set it, for the exposure once it is on screen. */
   experimentId: string | null;
 }
-export interface DrawerLine extends DrawerPrice { id: string; title: string; handle: string; image: string | null; quantity: number }
+/** A cart line: `amount` is the line's total, `each` the unit price when there is more than one. */
+export interface DrawerLine extends DrawerPrice { id: string; title: string; handle: string; image: string | null; quantity: number; each: string | null }
 export interface DrawerProduct extends DrawerPrice { productId: string; variantId: string; title: string; handle: string; image: string | null }
 export interface Drawer {
   lines: DrawerLine[];
@@ -50,7 +51,8 @@ export async function drawerFor(cart: Cart | null, context: CartContext): Promis
     handle: line.handle,
     image: line.image?.url ?? null,
     quantity: line.quantity,
-    amount: format(line.cost),
+    amount: format(line.total),
+    each: line.quantity > 1 ? format(line.cost) : null,
     compareAt: null,
     experimentId: context.abconvert.getPriceByVariantId(line.variantId)?.experimentId ?? null,
   }));
