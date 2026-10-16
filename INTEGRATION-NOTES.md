@@ -62,6 +62,7 @@ A headless store holds a copy of something in four places. Each has its own rule
 ## Preview and forcing
 
 - A test in Preview shows only in a preview session. Its preview link carries a preview key; append `abconvert_force=<test ID>:<index>` to pick a test group. The key is remembered for the rest of the visit.
+- Save your storefront's address under **Integrations**, **Headless Storefront** in ABConvert, and preview links from the admin, the API and MCP open on your storefront. Until you do, they open on your online store; replace the domain and keep the query parameters.
 - A test in Preview still makes the pages it could change `private` at your CDN, for every visitor, so the preview link is never answered from a stored page. Do not leave a price test in Preview for days: preview it, then launch it or move it back to Draft.
 - Test groups count from 0. Control is 0, Variant A is 1.
 - A forced test group lasts for the rest of the visit, until 30 minutes after the last page. Use a private window to check as a new visitor.

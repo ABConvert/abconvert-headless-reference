@@ -9,7 +9,7 @@ Before installing local dependencies, confirm:
 - Node.js 20+ is available (`@abconvert/headless` requires it).
 - A Shopify dev store has products with stock, a shipping rate for the test address, and a test payment gateway. Plus is appropriate for testing the price-test Shopify Function.
 - The same store has Shopify's Headless channel and ABConvert installed.
-- Your ABConvert contact has turned on the headless SDK for this store. Confirm **Settings → Headless Storefront** appears.
+- Your ABConvert contact has turned on the headless SDK for this store. Confirm **Integrations → Headless Storefront** appears.
 - ABConvert onboarding is complete and the store can create a price test. For manual app billing, the developer must issue a **test charge**, or arrange complimentary dev-store access. A real subscription screen requesting a billing card is not the intended test setup. Do not confuse app billing with the shopper's test payment gateway.
 - ABConvert's analytics web pixel is enabled; confirm its status in Settings. Loading SDK configuration alone does not verify event collection.
 
@@ -24,7 +24,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-Set the Shopify domain and private token, `ABCONVERT_SHOP`, and the public storefront key created in **Settings → Headless Storefront**. Set these before building:
+Set the Shopify domain and private token, `ABCONVERT_SHOP`, and the public storefront key created in **Integrations → Headless Storefront**. On that page, save `http://localhost:8080` as the **Storefront URL** so preview links open on the reference store. Set these before building:
 
 ```dotenv
 SITE_URL=http://localhost:8080
@@ -47,7 +47,7 @@ When changing the configured shop, use a fresh browser profile or clear the loca
 
 1. Choose a stocked, single-variant product. Record its handle and original price.
 2. Create a price test with a 50/50 split, a clear Variant A price difference, and a priced market matching the country selected in the reference store. Leave it in Preview.
-3. Copy the preview link. Replace its origin with `http://localhost:8080` and its path with `/products/YOUR_HANDLE`, retaining its query parameters. Set `abconvert_force=TEST_ID:1` (append with `&` if the URL already has a query). Use the numeric ID from the app or the identifier supplied in its preview link; Control is index `0`, Variant A is `1`.
+3. Copy the preview link. Its origin is `http://localhost:8080` when that is the saved storefront URL; otherwise replace it. Replace its path with `/products/YOUR_HANDLE`, retaining its query parameters. Set `abconvert_force=TEST_ID:1` (append with `&` if the URL already has a query). Use the numeric ID from the app or the identifier supplied in its preview link; Control is index `0`, Variant A is `1`.
 4. Verify Variant A on the product, a collection containing it, search, the cart drawer, and the cart page. Check compare-at prices if configured.
 5. Check the line price through all four entry points: drawer Checkout, cart-page Checkout, Buy Now, and Buy with Shop Pay. Record whether Shop Pay actually opens or Shopify falls back to standard checkout. A correct cart-permalink price alone does not prove native Shop Pay.
 6. Force Control and repeat. Open a cart created under Variant A and confirm it reconciles to Control. Also test quantity changes and drawer recommendations.

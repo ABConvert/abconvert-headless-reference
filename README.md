@@ -44,7 +44,8 @@ Every Storefront API call in this store runs on the server, so it sends the priv
 ### 2. Connect ABConvert
 
 1. Install ABConvert on the same store, and ask your ABConvert contact to turn on the headless SDK for it.
-2. In ABConvert, open **Settings**, **Headless Storefront**, click **Create Storefront Key**, and copy the key. The key is public: it identifies your store's tests, and you can revoke it at any time.
+2. In ABConvert, open **Integrations**, **Headless Storefront**, click **Create key**, and copy the key. The key is public: it identifies your store's tests, and you can revoke it at any time.
+3. On the same page, save `http://localhost:8080` as the **Storefront URL** while you test locally, and change it to your live storefront's address once you deploy. Preview links from ABConvert then open on this store instead of your online store.
 
 ### 3. Configure and run
 
@@ -80,7 +81,7 @@ npm run cdn
 ### 4. Create a test and check it
 
 1. In ABConvert, create a price test on one of your products and leave it in **Preview**.
-2. Copy its preview link, replace the domain with `http://localhost:8080`, and add `&abconvert_force=<test ID>:1`. The product page shows Variant A's price. The panel shows the page key and the forced test group.
+2. Copy its preview link, which opens on `http://localhost:8080` once that is your storefront URL, and add `&abconvert_force=<test ID>:1`. The product page shows Variant A's price. The panel shows the page key and the forced test group.
 3. Open a collection with that product, the cart drawer and the cart page. All show the same price.
 4. Go to checkout four ways: **Checkout** in the cart drawer, **Checkout** on the cart page, **Buy Now**, and **Buy with Shop Pay**. Each checkout line shows Variant A's price.
 5. Change the force to `:0`. Every page and checkout show Control's price.
