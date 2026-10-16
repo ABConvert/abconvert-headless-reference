@@ -84,7 +84,7 @@ npm run cdn
 3. Open a collection with that product, the cart drawer and the cart page. All show the same price.
 4. Go to checkout four ways: **Checkout** in the cart drawer, **Checkout** on the cart page, **Buy Now**, and **Buy with Shop Pay**. Each checkout line shows Variant A's price.
 5. Change the force to `:0`. Every page and checkout show Control's price.
-6. Launch the test. Wait a minute, open a private window without the preview link, and browse as a new visitor. The browser sends the assignment, the exposure, page views and add to cart to ABConvert; a completed order shows in the test's results.
+6. Launch the test. Wait up to two minutes, open a private window without the preview link, and browse as a new visitor. The browser sends the assignment, the exposure, page views and add to cart to ABConvert; a completed order shows in the test's results.
 
 The full walk-through is in [Preview and check your integration](https://docs.abconvert.io/headless-sdk/preview).
 
@@ -101,7 +101,7 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 
 1. **The middleware decides.** `planMiddleware` reads or creates the visitor, places them in each test, writes the SDK's cookies only when they change, and redirects for a URL redirect test.
 2. **A tested page is rewritten to a page key.** When a test changes the page for this visitor, the request goes to `app/[locale]/abconvert/[pageKey]/...`. The page key names the test groups and nothing about the visitor, so Next.js caches one copy per test group combination, and everyone in those test groups shares it. Pages no test changes are not rewritten and are cached once, as without ABConvert.
-3. **A path-keyed CDN never stores a tested page.** The middleware sets `cache-control: private` on every page a test can change, for every visitor. The CDN passes those pages to Next.js, which still answers from its own cache. Untested pages keep `public, s-maxage=60` and are served by the CDN.
+3. **A path-keyed CDN never stores a tested page.** The middleware sets `cache-control: private` on every page a test can change, for every visitor. The CDN passes those pages to Next.js, which still answers from its own cache. Untested pages keep `public, s-maxage=60` and are served by the CDN, except a response that sets cookies, such as a first visit, and a page served before the SDK loaded your tests: both are `private`.
 4. **The browser tracks.** The provider in each layout reads the visitor from the cookies and sends assignments, exposures and events.
 5. **The cart carries the test groups to checkout.** The cart actions write ABConvert's cart and line attributes. ABConvert's Shopify Functions read them in checkout and charge the test price; the web pixel and the order carry the same visitor.
 
@@ -204,7 +204,7 @@ The store installs [`@abconvert/headless`](https://www.npmjs.com/package/@abconv
 
 ## Next.js versions
 
-The SDK supports the App Router on Next.js 14, 15.1 to 15.4, and 16. Next.js 15.5 renders every page a middleware rewrites on every request, with or without ABConvert, and 15.0 does not cache a page on its first request. On Next.js 16, rename `middleware.ts` to `proxy.ts` and its function to `proxy` (`npx @next/codemod@canary middleware-to-proxy .`).
+The SDK supports the App Router on Next.js 14.2.10 and later 14.2 releases, 15.1 to 15.4, and 16. Earlier 14 releases replace the middleware's `cache-control: private` with their own cache header, so a CDN could serve one test group's page to everyone. Next.js 15.5 renders every page a middleware rewrites on every request, with or without ABConvert, and 15.0 does not cache a page on its first request. On Next.js 16, rename `middleware.ts` to `proxy.ts` and its function to `proxy` (`npx @next/codemod@canary middleware-to-proxy .`).
 
 ## Project layout
 

@@ -10,21 +10,20 @@ A headless store holds a copy of something in four places. Each has its own rule
 |---|---|---|
 | Your CDN | Whole pages, keyed by path | It must never store a page that differs per visitor. The SDK marks those `private`. |
 | Next.js | Whole pages, keyed by route | One copy per page key, so one per combination of test groups. A change to a test gives a new key. |
-| The SDK, on each server | Your tests | Fresh for 60 seconds, then refreshed behind the next request. Only a server with no copy waits, for at most 1 second. |
+| The SDK, on each server | Your tests | Fresh for 60 seconds, then refreshed behind the next request. A server with no copy waits for at most 1 second, and the first page of a preview link for at most 10 seconds. |
 | The browser | The page's tests and prices | Only the prices for that page's key. A product outside the key has no test price in the browser. |
 
 ## A price test touches almost every page
 
-- While a price test runs, every home, collection, search and product page is `private` to a path-keyed CDN. Those pages still come from Next.js's cache, so they are not rendered per visit. What you lose is the CDN hit.
+- While a price test runs, every home, collection, search and product page that can show its price is `private` to a path-keyed CDN. With `onlyOwnProductPrices`, as in this store, a product page in no test stays cacheable. Those pages still come from Next.js's cache, so they are not rendered per visit. What you lose is the CDN hit.
 - The SDK decides from the URL alone, by Shopify's URL conventions. A page with prices at another path, such as `/deals` or a brand page, gets no page key and no `private`. Render such pages per request, or give them a URL the SDK knows.
 - `onlyOwnProductPrices` is a promise that your product pages show no other product's price. Keep it off if they show related products, bundles or recommendations.
 
 ## Let your CDN cache tested pages, in the right order
 
 - The default mode needs no CDN setting: tested pages go past the CDN to Next.js's cache. Launch with it.
-- Google Cloud CDN can key on up to five named cookies on a backend service. Add `abconvert-key` and the three ABConvert query parameters to the key in one change, then turn on `cdnKeyedByCookie`. Turn it off in reverse.
+- Google Cloud CDN can key on up to five named cookies on a backend service. In one change, add the `abconvert-key` cookie and the query parameters `abconvert_force`, `abconvert_preview_key` and `abconvert_experiment_id` to the key, then turn on `cdnKeyedByCookie`. Turn it off in reverse. A preview link and a forced test group live in the query string: a key without them answers the link from the copy stored for the visitor's current test groups, and the link does nothing for up to 60 seconds.
 - With the SDK option on and a path-only CDN key, the CDN stores one test group's page and serves it to everyone. Nothing warns you.
-- In that mode, also add `abconvert_force`, `abconvert_preview_key` and `abconvert_experiment_id` to the cache key. A preview link and a forced test group live in the query string; a key without them answers the link from the stored copy for the visitor's current test groups, and the link does nothing for up to 60 seconds.
 - The cookie covers every price test, so it splits the cache for untested pages too. Route product, collection and search paths through their own backend service.
 - Cloud CDN never stores a response with `Set-Cookie`, `private` or `no-store`. It does not store a response whose `Vary` names a header outside its allowed list, and Next.js adds `Vary: RSC`. Rewrite `Vary` to `Accept-Encoding` in front of Next.js.
 
@@ -32,7 +31,7 @@ A headless store holds a copy of something in four places. Each has its own rule
 
 - A click inside your site is not a page load. Next.js fetches the new page's content with an `RSC` header, and a CDN never caches those, so they always reach the middleware. The SDK plans those fetches too, including the Back button after a server action such as Add to Cart.
 - Reading cookies or `useSearchParams()` in a page makes it render per request. Key your page view tracking on the path only.
-- Use Next.js 14, 15.1 to 15.4, or 16. Version 15.0 does not cache a page on its first request, and 15.5 renders every page behind a middleware rewrite on every request.
+- Use Next.js 14.2.10 or a later 14.2 release, 15.1 to 15.4, or 16. Earlier 14 releases replace the middleware's `cache-control: private`, version 15.0 does not cache a page on its first request, and 15.5 renders every page behind a middleware rewrite on every request.
 - A middleware `Cache-Control` value wins over a `headers()` rule in `next.config`. A proxy that rewrites `Cache-Control` in front of Next.js must keep `private`.
 - Keep non-page routes out of the middleware matcher: route handlers, webhooks, anything under `/api`. A script's request has no browser headers, so the SDK would take it for a page load, assign it a test group and set cookies.
 - Never skip prefetches in the matcher. Next.js's middleware guide shows a `missing` rule for the `next-router-prefetch` header; with it, a prefetch of a tested page bypasses the middleware, so the click shows the original prices from a copy fetched without its key.
@@ -65,12 +64,12 @@ A headless store holds a copy of something in four places. Each has its own rule
 - A test in Preview shows only in a preview session. Its preview link carries a preview key; append `abconvert_force=<test ID>:<index>` to pick a test group. The key is remembered for the rest of the visit.
 - A test in Preview still makes the pages it could change `private` at your CDN, for every visitor, so the preview link is never answered from a stored page. Do not leave a price test in Preview for days: preview it, then launch it or move it back to Draft.
 - Test groups count from 0. Control is 0, Variant A is 1.
-- A forced test group stays in the `abconvert-state` cookie for a year. Use a private window to check as a new visitor.
+- A forced test group lasts for the rest of the visit, until 30 minutes after the last page. Use a private window to check as a new visitor.
 
 ## Loading failures
 
-- A request that times out shows the original store and logs nothing unless you pass `onError`. Pass it, so a timeout does not look like a missing test.
-- Keep the default `cacheTtl` of 60 seconds in production. A short value makes requests wait on fetches, and a slow one shows the original store.
+- A request that times out shows the original store, marked `private` so your CDN does not keep it, and logs nothing unless you pass `onError`. Pass it, so a timeout does not look like a missing test.
+- Keep the default `cacheTtl` of 60 seconds in production. A shorter value refreshes more often for no gain, because a server with a copy never makes a request wait for a refresh.
 
 ## Shopify's Headless channel
 

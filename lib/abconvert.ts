@@ -13,8 +13,10 @@ export const abconvertOptions: NextOptions = {
   // your product pages show related products with prices.
   onlyOwnProductPrices: true,
   // Lets your CDN cache tested pages, one copy per combination of test groups.
-  // Turn it on only after your CDN adds the `abconvert-key` cookie to its cache
-  // key, and turn it off before you remove the cookie from the key. In the other
+  // Turn it on only after your CDN adds the `abconvert-key` cookie and the query
+  // parameters `abconvert_force`, `abconvert_preview_key` and
+  // `abconvert_experiment_id` to its cache key, and turn it off before you
+  // remove them. In the other
   // order, a CDN that caches by path alone serves one test group's page to everyone.
   // https://docs.abconvert.io/headless-sdk/nextjs#cache-tested-pages-at-your-cdn
   cdnKeyedByCookie: process.env.ABCONVERT_CDN_KEYED_BY_COOKIE === '1',
