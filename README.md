@@ -132,10 +132,10 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 
      ```bash
      gcloud compute backend-services update YOUR_BACKEND_SERVICE --global \
-       --cache-key-include-named-cookie=abconvert-key \
-       --cache-key-include-query-string \
-       --cache-key-query-string-whitelist=abconvert_force,abconvert_preview_key,abconvert_experiment_id
+       --cache-key-include-named-cookie=abconvert-key
      ```
+
+     Cloud CDN keys on the full query string by default, which covers the three parameters: `abconvert_force`, `abconvert_preview_key`, and `abconvert_experiment_id`. If your backend service leaves the query string out of its key, or keys only on a list of parameters, add these three. Do not narrow the key to only these three: your search and filter pages would then share one copy.
 
      The query parameters matter as much as the cookie. A preview link and a forced test group live in the query string; a key without them answers such a link from the copy stored for the visitor's current test groups, so the link does nothing for up to 60 seconds.
 

@@ -22,7 +22,8 @@
 // CDN_KEY_COOKIES=abconvert-key adds that cookie's value to the cache key, as
 // `--cache-key-include-named-cookie` does on Cloud CDN, and
 // CDN_KEY_QUERY=abconvert_force,abconvert_preview_key,abconvert_experiment_id
-// adds those query parameters, as a query string whitelist does. Use both with
+// adds those query parameters to a key that otherwise leaves the query
+// string out, as a setup that keys on a list of parameters must. Use both with
 // ABCONVERT_CDN_KEYED_BY_COOKIE=1 in the store to try the cookie-keyed mode.
 //
 // CDN_COUNTRY=US adds `x-country: US` to every request it forwards, as a Google
