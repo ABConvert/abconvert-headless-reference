@@ -81,10 +81,10 @@ npm run cdn
 ### 4. Create a test and check it
 
 1. In ABConvert, create a price test on one of your products and leave it in **Preview**.
-2. Copy its preview link, which opens on `http://localhost:8080` once that is your storefront URL, and add `&abconvert_force=<test ID>:1`. The product page shows Variant A's price. The panel shows the page key and the forced test group.
+2. In the test's **Preview Test** card, open **Variant A**'s link. With `http://localhost:8080` saved as your storefront URL, it opens on this store with Variant A forced for the rest of your visit. Go to the product page: it shows Variant A's price, and the panel shows the page key and the forced test group.
 3. Open a collection with that product, the cart drawer and the cart page. All show the same price.
 4. Go to checkout four ways: **Checkout** in the cart drawer, **Checkout** on the cart page, **Buy Now**, and **Buy with Shop Pay**. Each checkout line shows Variant A's price.
-5. Change the force to `:0`. Every page and checkout show Control's price.
+5. Open **Control**'s link. Every page and checkout show Control's price.
 6. Launch the test. Wait up to two minutes, open a private window without the preview link, and browse as a new visitor. The browser sends the assignment, the exposure, page views and add to cart to ABConvert; a completed order shows in the test's results.
 
 The full walk-through is in [Preview and check your integration](https://docs.abconvert.io/headless-sdk/preview).

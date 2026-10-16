@@ -47,10 +47,10 @@ When changing the configured shop, use a fresh browser profile or clear the loca
 
 1. Choose a stocked, single-variant product. Record its handle and original price.
 2. Create a price test with a 50/50 split, a clear Variant A price difference, and a priced market matching the country selected in the reference store. Leave it in Preview.
-3. Copy the preview link. Its origin is `http://localhost:8080` when that is the saved storefront URL; otherwise replace it. Replace its path with `/products/YOUR_HANDLE`, retaining its query parameters. Set `abconvert_force=TEST_ID:1` (append with `&` if the URL already has a query). Use the numeric ID from the app or the identifier supplied in its preview link; Control is index `0`, Variant A is `1`.
+3. With `http://localhost:8080` saved as the storefront URL, the test's **Preview Test** card lists a link for each test group. Copy **Variant A**'s link and change its path to `/products/YOUR_HANDLE`, keeping its query parameters. Without a saved storefront URL, copy the single preview link, replace its origin with `http://localhost:8080`, and add `abconvert_force=TEST_ID:1` (with `&` if the URL already has a query). Control is index `0`, Variant A is `1`.
 4. Verify Variant A on the product, a collection containing it, search, the cart drawer, and the cart page. Check compare-at prices if configured.
 5. Check the line price through all four entry points: drawer Checkout, cart-page Checkout, Buy Now, and Buy with Shop Pay. Record whether Shop Pay actually opens or Shopify falls back to standard checkout. A correct cart-permalink price alone does not prove native Shop Pay.
-6. Force Control and repeat. Open a cart created under Variant A and confirm it reconciles to Control. Also test quantity changes and drawer recommendations.
+6. Open **Control**'s link and repeat. Open a cart created under Variant A and confirm it reconciles to Control. Also test quantity changes and drawer recommendations.
 
 Preview and forced visits are QA: they are excluded from test results. They verify routing and prices, not attribution.
 
