@@ -44,7 +44,7 @@ Every Storefront API call in this store runs on the server, so it sends the priv
 ### 2. Connect ABConvert
 
 1. Install ABConvert on the same store, and ask your ABConvert contact to turn on the headless SDK for it.
-2. In ABConvert, open **Integrations**, **Headless Storefront**, click **Create key**, and copy the key. The key is public: it identifies your store's tests, and you can revoke it at any time.
+2. In ABConvert, open **Integrations**, **Headless Storefront**, click **Create key**, and copy the key. You can revoke a key at any time.
 3. On the same page, save `http://localhost:8080` as the **Storefront URL** while you test locally, and change it to your live storefront's address once you deploy. Preview links from ABConvert then open on this store instead of your online store.
 
 ### 3. Configure and run

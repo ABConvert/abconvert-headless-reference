@@ -24,7 +24,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-Set the Shopify domain and private token, `ABCONVERT_SHOP`, and the public storefront key created in **Integrations → Headless Storefront**. On that page, save `http://localhost:8080` as the **Storefront URL** so preview links open on the reference store. Set these before building:
+Set the Shopify domain and private token, `ABCONVERT_SHOP`, and the storefront key created in **Integrations → Headless Storefront**. On that page, save `http://localhost:8080` as the **Storefront URL** so preview links open on the reference store. Set these before building:
 
 ```dotenv
 SITE_URL=http://localhost:8080
