@@ -22,7 +22,7 @@ export function ProductView({ product, abconvert }: { product: Product; country:
       <div>
         <h1>{product.title}</h1>
         <ProductViewed productId={product.id} variantId={product.variantId} />
-        <p className="pdp-price"><Price variantId={product.variantId} price={product.price} compareAtPrice={product.compareAtPrice} abconvert={abconvert} /></p>
+        <p className="pdp-price"><Price product={product} abconvert={abconvert} /></p>
         <p>{product.description}</p>
         <div className="buttons">
           <AddToCart productId={product.id} variantId={product.variantId} />

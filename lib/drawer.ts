@@ -8,6 +8,7 @@
 // which knows the visitor and prices every product.
 import 'server-only';
 import type { CartContext } from './cart';
+import { testPrice } from './price';
 import { getRecommendations, type Cart, type Money, type Product } from './shopify';
 
 export interface DrawerPrice {
@@ -28,11 +29,11 @@ export interface Drawer {
   error?: string;
 }
 
-function priced(context: CartContext, variantId: string, price: Money, compareAt: Money | null): DrawerPrice {
-  const tested = context.abconvert.getPriceByVariantId(variantId);
-  const currency = tested?.currency ?? price.currency;
-  const value = tested?.amount ?? price.amount;
-  const compare = tested ? tested.compareAtAmount : compareAt?.amount ?? null;
+function priced(context: CartContext, product: Product): DrawerPrice {
+  const tested = testPrice(context.abconvert, product);
+  const currency = tested?.currency ?? product.price.currency;
+  const value = tested?.amount ?? product.price.amount;
+  const compare = tested ? tested.compareAtAmount : product.compareAtPrice?.amount ?? null;
   return {
     amount: context.abconvert.formatPrice(value, currency),
     compareAt: compare !== null && compare > value ? context.abconvert.formatPrice(compare, currency) : null,
@@ -54,7 +55,7 @@ export async function drawerFor(cart: Cart | null, context: CartContext): Promis
     amount: format(line.total),
     each: line.quantity > 1 ? format(line.cost) : null,
     compareAt: null,
-    experimentId: context.abconvert.getPriceByVariantId(line.variantId)?.experimentId ?? null,
+    experimentId: testPrice(context.abconvert, line)?.experimentId ?? null,
   }));
 
   // A recommendation is not in the cart yet, so the SDK prices it.
@@ -63,7 +64,7 @@ export async function drawerFor(cart: Cart | null, context: CartContext): Promis
   const recommendations = related
     .filter((product) => !inCart.has(product.id))
     .slice(0, 4)
-    .map((product) => ({ productId: product.id, variantId: product.variantId, title: product.title, handle: product.handle, image: product.image?.url ?? null, ...priced(context, product.variantId, product.price, product.compareAtPrice) }));
+    .map((product) => ({ productId: product.id, variantId: product.variantId, title: product.title, handle: product.handle, image: product.image?.url ?? null, ...priced(context, product) }));
 
   return {
     lines,

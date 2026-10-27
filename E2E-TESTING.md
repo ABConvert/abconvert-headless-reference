@@ -51,6 +51,7 @@ When changing the configured shop, use a fresh browser profile or clear the loca
 4. Verify Variant A on the product, a collection containing it, search, the cart drawer, and the cart page. Check compare-at prices if configured.
 5. Check the line price through all four entry points: drawer Checkout, cart-page Checkout, Buy Now, and Buy with Shop Pay. Record whether Shop Pay actually opens or Shopify falls back to standard checkout. A correct cart-permalink price alone does not prove native Shop Pay.
 6. Open **Control**'s link and repeat. Open a cart created under Variant A and confirm it reconciles to Control. Also test quantity changes and drawer recommendations.
+7. Repeat steps 2 to 5 with a price test by product type, for example 10% off one product type. Check a product of that type and one of another type on the same collection page: only the first changes.
 
 Preview and forced visits are QA: they are excluded from test results. They verify routing and prices, not attribution.
 

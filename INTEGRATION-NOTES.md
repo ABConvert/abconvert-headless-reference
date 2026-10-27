@@ -15,9 +15,10 @@ A headless store holds a copy of something in four places. Each has its own rule
 
 ## A price test touches almost every page
 
-- While a price test runs, every home, collection, search and product page that can show its price is `private` to a path-keyed CDN. With `onlyOwnProductPrices`, as in this store, a product page in no test stays cacheable. Those pages still come from Next.js's cache, so they are not rendered per visit. What you lose is the CDN hit.
+- While a price test runs, every home, collection, search and product page that can show its price is `private` to a path-keyed CDN. With `onlyOwnProductPrices`, as in this store, a product page in no test stays cacheable, except while a price test by product type runs: the URL does not say the product's type, so every product page counts as tested. Those pages still come from Next.js's cache, so they are not rendered per visit. What you lose is the CDN hit.
 - The SDK decides from the URL alone, by Shopify's URL conventions. A page with prices at another path, such as `/deals` or a brand page, gets no page key and no `private`. Render such pages per request, or give them a URL the SDK knows.
 - `onlyOwnProductPrices` is a promise that your product pages show no other product's price. Keep it off if they show related products, bundles or recommendations.
+- Pass the product's type, price and compare-at price from the Storefront API on every price read, cart lines included (`lib/price.ts`). A price test by product type has a rule instead of a price per product variant, so a read without them returns `null`: the page shows the original price while checkout charges the test price. They change nothing for a test of specific products.
 
 ## Let your CDN cache tested pages, in the right order
 
