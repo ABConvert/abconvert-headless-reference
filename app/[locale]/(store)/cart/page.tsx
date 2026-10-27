@@ -6,6 +6,7 @@
 // https://docs.abconvert.io/headless-sdk/cart
 import Link from 'next/link';
 import { cartContext, currentCart } from '@/lib/cart';
+import { testPrice } from '@/lib/price';
 import { CheckoutLink } from '@/components/CheckoutLink';
 import { Exposure } from '@/components/Exposure';
 
@@ -21,7 +22,7 @@ export default async function CartPage() {
   const lines = cart?.lines ?? [];
   const subtotal = cart?.subtotal.amount ?? 0;
   // The price tests behind the lines, for the exposure once they are on screen.
-  const tested = [...new Set(lines.flatMap((line) => abconvert.getPriceByVariantId(line.variantId)?.experimentId ?? []))];
+  const tested = [...new Set(lines.flatMap((line) => testPrice(abconvert, line)?.experimentId ?? []))];
   const offers = lines.length ? abconvert.getOffers() : [];
   const threshold = lines.length ? abconvert.getFreeShippingThreshold() : null;
 

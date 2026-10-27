@@ -12,7 +12,7 @@ export function ProductGrid({ products, abconvert }: { products: Product[]; abco
             {product.image ? <img src={product.image.url} alt={product.image.altText ?? product.title} loading="lazy" /> : <div className="placeholder" />}
             <h3>{product.title}</h3>
           </Link>
-          <Price variantId={product.variantId} price={product.price} compareAtPrice={product.compareAtPrice} abconvert={abconvert} />
+          <Price product={product} abconvert={abconvert} />
         </div>
       ))}
     </div>

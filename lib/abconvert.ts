@@ -9,8 +9,9 @@ export const abconvertOptions: NextOptions = {
   // Only for a staging or development ABConvert backend; unset in production.
   ...(process.env.ABCONVERT_BASE_URL ? { baseUrl: process.env.ABCONVERT_BASE_URL } : {}),
   // Product pages here show no price but their own product's, so a product page
-  // is keyed only by the price tests that include its product. Remove this if
-  // your product pages show related products with prices.
+  // is keyed only by the price tests that include its product. A test by
+  // product type still keys every product page: the URL does not say the type.
+  // Remove this if your product pages show related products with prices.
   onlyOwnProductPrices: true,
   // Lets your CDN cache tested pages, one copy per combination of test groups.
   // Turn it on only after your CDN adds the `abconvert-key` cookie and the query

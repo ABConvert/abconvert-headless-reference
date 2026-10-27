@@ -29,6 +29,8 @@ export interface Product {
   handle: string;
   title: string;
   description: string;
+  /** For a price test by product type: the SDK prices the product by its type. */
+  productType: string;
   image: { url: string; altText: string | null } | null;
   price: Money;
   compareAtPrice: Money | null;
@@ -42,6 +44,10 @@ export interface CartLine {
   cost: Money;
   /** The same for the whole line: the unit price times the quantity, before cart-level discounts. */
   total: Money;
+  /** The product variant's own prices, which the test does not change: they name the price test behind the line. */
+  productType: string;
+  price: Money;
+  compareAtPrice: Money | null;
 }
 export interface Cart { id: string; checkoutUrl: string; attributes: Attribute[]; lines: CartLine[]; subtotal: Money }
 
@@ -80,14 +86,14 @@ async function storefront<T>(query: string, variables: Record<string, unknown>, 
 // ---------------------------------------------------------------------------
 
 const PRODUCT_FIELDS = `
-  id handle title description
+  id handle title description productType
   featuredImage { url altText }
   variants(first: 1) { nodes { id price { amount currencyCode } compareAtPrice { amount currencyCode } } }
 `;
 
 type RawMoney = { amount: string; currencyCode: string };
 type RawProduct = {
-  id: string; handle: string; title: string; description: string;
+  id: string; handle: string; title: string; description: string; productType: string;
   featuredImage: { url: string; altText: string | null } | null;
   variants: { nodes: { id: string; price: RawMoney; compareAtPrice: RawMoney | null }[] };
 };
@@ -104,6 +110,7 @@ function toProduct(raw: RawProduct): Product | null {
     handle: raw.handle,
     title: raw.title,
     description: raw.description,
+    productType: raw.productType,
     image: raw.featuredImage,
     price: money(variant.price),
     compareAtPrice: variant.compareAtPrice ? money(variant.compareAtPrice) : null,
@@ -169,14 +176,14 @@ const CART_FIELDS = `
       id quantity
       attributes { key value }
       cost { amountPerQuantity { amount currencyCode } subtotalAmount { amount currencyCode } }
-      merchandise { ... on ProductVariant { id image { url altText } product { id handle title } } }
+      merchandise { ... on ProductVariant { id image { url altText } price { amount currencyCode } compareAtPrice { amount currencyCode } product { id handle title productType } } }
     }
   }
 `;
 
 type RawCart = {
   id: string; checkoutUrl: string; attributes: Attribute[]; cost: { subtotalAmount: RawMoney };
-  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; cost: { amountPerQuantity: RawMoney; subtotalAmount: RawMoney }; merchandise: { id: string; image: { url: string; altText: string | null } | null; product: { id: string; handle: string; title: string } } }[] };
+  lines: { nodes: { id: string; quantity: number; attributes: Attribute[]; cost: { amountPerQuantity: RawMoney; subtotalAmount: RawMoney }; merchandise: { id: string; image: { url: string; altText: string | null } | null; price: RawMoney; compareAtPrice: RawMoney | null; product: { id: string; handle: string; title: string; productType: string } } }[] };
 };
 type Payload = { cart: RawCart | null; userErrors: { message: string }[] };
 
@@ -200,6 +207,9 @@ function toCart(payload: Payload | { cart: RawCart | null }): Cart | null {
       image: line.merchandise.image,
       cost: money(line.cost.amountPerQuantity),
       total: money(line.cost.subtotalAmount),
+      productType: line.merchandise.product.productType,
+      price: money(line.merchandise.price),
+      compareAtPrice: line.merchandise.compareAtPrice ? money(line.merchandise.compareAtPrice) : null,
     })),
   };
 }

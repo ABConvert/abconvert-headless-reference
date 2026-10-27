@@ -115,7 +115,7 @@ Browser ─▶ Google Cloud CDN ─▶ Next.js middleware ─▶ page route ─�
 | `app/[locale]/abconvert/[pageKey]/` | The page key routes: the same pages, rendered from the key | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-tested-routes) |
 | `app/[locale]/*/layout.tsx` | `ABConvertProvider` with the page's state | [Next.js, step 3](https://docs.abconvert.io/headless-sdk/nextjs#step-2-add-the-tested-routes) |
 | `components/ProductView.tsx` | Canonical URLs built from the route params | [Next.js, step 4](https://docs.abconvert.io/headless-sdk/nextjs#common-mistakes) |
-| `components/Price.tsx` | The test price, else the Storefront API price, and the exposure | [Prices](https://docs.abconvert.io/headless-sdk/prices) |
+| `lib/price.ts`, `components/Price.tsx` | The test price, else the Storefront API price, and the exposure. Every read passes the product type and prices, for a test by product type | [Prices](https://docs.abconvert.io/headless-sdk/prices) |
 | `lib/cart.ts`, `app/actions.ts` | Cart and line attributes on every cart change, checked again before checkout | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
 | `lib/drawer.ts`, `components/CartDrawer.tsx` | The cart drawer, priced on the server | [Cart](https://docs.abconvert.io/headless-sdk/cart) |
 | `components/Tracking.tsx`, `ProductViewed.tsx`, `AddToCart.tsx` | Page views, product views and add to cart | [Tracking](https://docs.abconvert.io/headless-sdk/tracking) |
@@ -217,6 +217,7 @@ lib/shopify.ts                      Storefront API: catalog and cart
 lib/request.ts                      the shopper's country and IP
 lib/cart.ts                         the visitor's cart and its attribute check
 lib/drawer.ts                       the cart drawer's contents, priced on the server
+lib/price.ts                        the visitor's test price for a product variant
 app/actions.ts                      Add to Cart, Buy Now, country
 app/[locale]/(store)/               pages no test changes for this visitor
 app/[locale]/abconvert/[pageKey]/   the same pages, rendered from a page key
