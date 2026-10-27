@@ -19,6 +19,7 @@ A headless store holds a copy of something in four places. Each has its own rule
 - The SDK decides from the URL alone, by Shopify's URL conventions. A page with prices at another path, such as `/deals` or a brand page, gets no page key and no `private`. Render such pages per request, or give them a URL the SDK knows.
 - `onlyOwnProductPrices` is a promise that your product pages show no other product's price. Keep it off if they show related products, bundles or recommendations.
 - Pass the product's type, price and compare-at price from the Storefront API on every price read, cart lines included (`lib/price.ts`). A price test by product type has a rule instead of a price per product variant, so a read without them returns `null`: the page shows the original price while checkout charges the test price. They change nothing for a test of specific products.
+- When a test of specific products and a test by product type both cover a product, the test of specific products sets its price, Control included: a visitor in its Control sees the original price, even when they are in a changed test group of the test by product type. The test by product type prices that product only for a visitor the other test leaves out. Checkout charges in the same order, so the page and checkout agree.
 
 ## Let your CDN cache tested pages, in the right order
 
